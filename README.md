@@ -247,4 +247,4 @@ Sie können die beigefügte Postman-Sammlung importieren, um die API-Endpunkte z
 
 ## Lizenz
 
-MIT 
+GPL v3 
