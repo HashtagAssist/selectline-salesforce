@@ -122,7 +122,19 @@ install_redis() {
     apt-get install -y redis-server
     
     if [ "$is_wsl" = true ]; then
-        print_warning "In WSL müssen Sie Redis manuell starten mit: redis-server"
+        # Startskript für Redis in WSL erstellen
+        cat > /usr/local/bin/start-redis-wsl <<EOF
+#!/bin/bash
+redis-server --daemonize yes
+echo "Redis-Server wurde im Hintergrund gestartet."
+EOF
+        chmod +x /usr/local/bin/start-redis-wsl
+        
+        # Redis direkt starten
+        redis-server --daemonize yes
+        
+        print_status "Redis-Server installiert und gestartet"
+        print_warning "In Zukunft können Sie Redis mit dem Befehl 'start-redis-wsl' starten"
     else
         systemctl start redis-server
         systemctl enable redis-server
