@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
+const { Schema } = mongoose;
 
 /**
  * Benutzer-Schema für die Authentifizierung
@@ -27,16 +27,32 @@ const userSchema = new Schema({
   },
   firstName: {
     type: String,
-    trim: true
+    default: ''
   },
   lastName: {
     type: String,
-    trim: true
+    default: ''
   },
   role: {
     type: String,
     enum: ['user', 'admin'],
     default: 'user'
+  },
+  emailVerified: {
+    type: Boolean,
+    default: false
+  },
+  emailVerificationToken: {
+    type: String
+  },
+  emailVerificationExpires: {
+    type: Date
+  },
+  passwordResetToken: {
+    type: String
+  },
+  passwordResetExpires: {
+    type: Date
   },
   isActive: {
     type: Boolean,

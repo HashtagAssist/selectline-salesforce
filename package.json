@@ -23,9 +23,12 @@
     "mongoose": "^7.0.3",
     "morgan": "^1.10.0",
     "node-cron": "^3.0.2",
+    "nodemailer": "^6.10.0",
     "redis": "^4.6.5",
+    "swagger-ui-express": "^4.6.3",
     "uuid": "^9.0.0",
-    "winston": "^3.8.2"
+    "winston": "^3.8.2",
+    "yamljs": "^0.3.0"
   },
   "devDependencies": {
     "jest": "^29.5.0",

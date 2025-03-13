@@ -1,9 +1,8 @@
 const { validationResult } = require('express-validator');
 const { StatusCodes } = require('http-status-codes');
 const winston = require('winston');
-const { fetchERPData, updateERPData, createERPData } = require('../services/erp.service');
-const { setCache, getCache, deleteCache, deleteCachePattern } = require('../services/redis.service');
-const { ValidationError, NotFoundError, ExternalAPIError } = require('../utils/error.handler');
+const selectLineService = require('../services/selectline-auth.service');
+const redis = require('../services/redis.service');
 
 // Logger konfigurieren
 const logger = winston.createLogger({
@@ -18,588 +17,359 @@ const logger = winston.createLogger({
   ]
 });
 
+// Cache TTL in seconds (30 minutes)
+const CACHE_TTL = 30 * 60;
+
 /**
- * Kunden aus dem ERP-System abrufen
- * @param {Object} req - Express-Request-Objekt
- * @param {Object} res - Express-Response-Objekt
- * @param {Function} next - Express-Next-Funktion
+ * Get customers from SelectLine
  */
 const getKunden = async (req, res, next) => {
   try {
-    // Validierung der Eingabedaten
+    // Validate request
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      throw new ValidationError('Validierungsfehler', errors.array());
-    }
-
-    const { limit = 25, offset = 0, search = '' } = req.query;
-    
-    // Cache-Schlüssel basierend auf den Abfrageparametern erstellen
-    const cacheKey = `erp:kunden:${limit}:${offset}:${search}`;
-    
-    // Zunächst versuchen, Daten aus dem Cache zu laden
-    const cachedData = await getCache(cacheKey);
-    
-    if (cachedData) {
-      logger.debug(`Kundeninformationen aus dem Cache abgerufen: ${cacheKey}`);
-      
-      return res.status(StatusCodes.OK).json({
-        status: 'success',
-        cached: true,
-        data: cachedData
+      return res.status(StatusCodes.BAD_REQUEST).json({ 
+        errors: errors.array() 
       });
     }
-    
-    // Parameter für die ERP-API-Anfrage
+
+    const { limit = 20, offset = 0, search = '' } = req.query;
+    const cacheKey = `kunden:${limit}:${offset}:${search}`;
+
+    // Try to get from cache first
+    const cachedData = await redis.client.get(cacheKey);
+    if (cachedData) {
+      return res.json(JSON.parse(cachedData));
+    }
+
+    // Build query params
     const params = {
-      limit: parseInt(limit, 10),
-      offset: parseInt(offset, 10)
+      limit,
+      offset
     };
-    
+
     if (search) {
       params.search = search;
     }
+
+    // Get customers from SelectLine
+    const response = await selectLineService.get('/customers', params);
     
-    // Daten vom ERP-System abrufen
-    const apiResponse = await fetchERPData('/api/customers', params, cacheKey);
+    // Cache the results
+    await redis.client.set(cacheKey, JSON.stringify(response.data), 'EX', CACHE_TTL);
     
-    logger.info(`${apiResponse.items?.length || 0} Kunden vom ERP-System abgerufen`);
-    
-    res.status(StatusCodes.OK).json({
-      status: 'success',
-      cached: false,
-      data: apiResponse
-    });
+    res.json(response.data);
   } catch (error) {
-    if (error.response) {
-      // Fehler von der ERP-API
-      next(new ExternalAPIError(
-        error.message,
-        { 
-          status: error.response.status,
-          data: error.response.data
-        },
-        'ERP'
-      ));
-    } else {
-      next(error);
-    }
-  }
-};
-
-/**
- * Einen bestimmten Kunden aus dem ERP-System abrufen
- * @param {Object} req - Express-Request-Objekt
- * @param {Object} res - Express-Response-Objekt
- * @param {Function} next - Express-Next-Funktion
- */
-const getKundeById = async (req, res, next) => {
-  try {
-    // Validierung der Eingabedaten
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      throw new ValidationError('Validierungsfehler', errors.array());
-    }
-
-    const { id } = req.params;
-    
-    // Cache-Schlüssel erstellen
-    const cacheKey = `erp:kunde:${id}`;
-    
-    // Zunächst versuchen, Daten aus dem Cache zu laden
-    const cachedData = await getCache(cacheKey);
-    
-    if (cachedData) {
-      logger.debug(`Kundeninformation aus dem Cache abgerufen: ${cacheKey}`);
-      
-      return res.status(StatusCodes.OK).json({
-        status: 'success',
-        cached: true,
-        data: cachedData
-      });
-    }
-    
-    // Daten vom ERP-System abrufen
-    const apiResponse = await fetchERPData(`/api/customers/${id}`, {}, cacheKey);
-    
-    if (!apiResponse) {
-      throw new NotFoundError(`Kunde mit ID ${id} nicht gefunden`);
-    }
-    
-    logger.info(`Kunde mit ID ${id} vom ERP-System abgerufen`);
-    
-    res.status(StatusCodes.OK).json({
-      status: 'success',
-      cached: false,
-      data: apiResponse
-    });
-  } catch (error) {
-    if (error.response && error.response.status === 404) {
-      next(new NotFoundError(`Kunde mit ID ${req.params.id} nicht gefunden`));
-    } else if (error.response) {
-      // Anderer Fehler von der ERP-API
-      next(new ExternalAPIError(
-        error.message,
-        { 
-          status: error.response.status,
-          data: error.response.data
-        },
-        'ERP'
-      ));
-    } else {
-      next(error);
-    }
-  }
-};
-
-/**
- * Artikel aus dem ERP-System abrufen
- * @param {Object} req - Express-Request-Objekt
- * @param {Object} res - Express-Response-Objekt
- * @param {Function} next - Express-Next-Funktion
- */
-const getArtikel = async (req, res, next) => {
-  try {
-    // Validierung der Eingabedaten
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      throw new ValidationError('Validierungsfehler', errors.array());
-    }
-
-    const { limit = 25, offset = 0, search = '' } = req.query;
-    
-    // Cache-Schlüssel basierend auf den Abfrageparametern erstellen
-    const cacheKey = `erp:artikel:${limit}:${offset}:${search}`;
-    
-    // Zunächst versuchen, Daten aus dem Cache zu laden
-    const cachedData = await getCache(cacheKey);
-    
-    if (cachedData) {
-      logger.debug(`Artikelinformationen aus dem Cache abgerufen: ${cacheKey}`);
-      
-      return res.status(StatusCodes.OK).json({
-        status: 'success',
-        cached: true,
-        data: cachedData
-      });
-    }
-    
-    // Parameter für die ERP-API-Anfrage
-    const params = {
-      limit: parseInt(limit, 10),
-      offset: parseInt(offset, 10)
-    };
-    
-    if (search) {
-      params.search = search;
-    }
-    
-    // Daten vom ERP-System abrufen
-    const apiResponse = await fetchERPData('/api/items', params, cacheKey);
-    
-    logger.info(`${apiResponse.items?.length || 0} Artikel vom ERP-System abgerufen`);
-    
-    res.status(StatusCodes.OK).json({
-      status: 'success',
-      cached: false,
-      data: apiResponse
-    });
-  } catch (error) {
-    if (error.response) {
-      // Fehler von der ERP-API
-      next(new ExternalAPIError(
-        error.message,
-        { 
-          status: error.response.status,
-          data: error.response.data
-        },
-        'ERP'
-      ));
-    } else {
-      next(error);
-    }
-  }
-};
-
-/**
- * Einen bestimmten Artikel aus dem ERP-System abrufen
- * @param {Object} req - Express-Request-Objekt
- * @param {Object} res - Express-Response-Objekt
- * @param {Function} next - Express-Next-Funktion
- */
-const getArtikelById = async (req, res, next) => {
-  try {
-    // Validierung der Eingabedaten
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      throw new ValidationError('Validierungsfehler', errors.array());
-    }
-
-    const { id } = req.params;
-    
-    // Cache-Schlüssel erstellen
-    const cacheKey = `erp:artikel:${id}`;
-    
-    // Zunächst versuchen, Daten aus dem Cache zu laden
-    const cachedData = await getCache(cacheKey);
-    
-    if (cachedData) {
-      logger.debug(`Artikelinformation aus dem Cache abgerufen: ${cacheKey}`);
-      
-      return res.status(StatusCodes.OK).json({
-        status: 'success',
-        cached: true,
-        data: cachedData
-      });
-    }
-    
-    // Daten vom ERP-System abrufen
-    const apiResponse = await fetchERPData(`/api/items/${id}`, {}, cacheKey);
-    
-    if (!apiResponse) {
-      throw new NotFoundError(`Artikel mit ID ${id} nicht gefunden`);
-    }
-    
-    logger.info(`Artikel mit ID ${id} vom ERP-System abgerufen`);
-    
-    res.status(StatusCodes.OK).json({
-      status: 'success',
-      cached: false,
-      data: apiResponse
-    });
-  } catch (error) {
-    if (error.response && error.response.status === 404) {
-      next(new NotFoundError(`Artikel mit ID ${req.params.id} nicht gefunden`));
-    } else if (error.response) {
-      // Anderer Fehler von der ERP-API
-      next(new ExternalAPIError(
-        error.message,
-        { 
-          status: error.response.status,
-          data: error.response.data
-        },
-        'ERP'
-      ));
-    } else {
-      next(error);
-    }
-  }
-};
-
-/**
- * Belege aus dem ERP-System abrufen
- * @param {Object} req - Express-Request-Objekt
- * @param {Object} res - Express-Response-Objekt
- * @param {Function} next - Express-Next-Funktion
- */
-const getBelege = async (req, res, next) => {
-  try {
-    // Validierung der Eingabedaten
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      throw new ValidationError('Validierungsfehler', errors.array());
-    }
-
-    const { 
-      typ = '', 
-      von = '', 
-      bis = '', 
-      limit = 25, 
-      offset = 0 
-    } = req.query;
-    
-    // Cache-Schlüssel basierend auf den Abfrageparametern erstellen
-    const cacheKey = `erp:belege:${typ}:${von}:${bis}:${limit}:${offset}`;
-    
-    // Zunächst versuchen, Daten aus dem Cache zu laden
-    const cachedData = await getCache(cacheKey);
-    
-    if (cachedData) {
-      logger.debug(`Beleginformationen aus dem Cache abgerufen: ${cacheKey}`);
-      
-      return res.status(StatusCodes.OK).json({
-        status: 'success',
-        cached: true,
-        data: cachedData
-      });
-    }
-    
-    // Parameter für die ERP-API-Anfrage
-    const params = {
-      limit: parseInt(limit, 10),
-      offset: parseInt(offset, 10)
-    };
-    
-    if (typ) params.type = typ;
-    if (von) params.dateFrom = von;
-    if (bis) params.dateTo = bis;
-    
-    // Daten vom ERP-System abrufen
-    const apiResponse = await fetchERPData('/api/documents', params, cacheKey);
-    
-    logger.info(`${apiResponse.items?.length || 0} Belege vom ERP-System abgerufen`);
-    
-    res.status(StatusCodes.OK).json({
-      status: 'success',
-      cached: false,
-      data: apiResponse
-    });
-  } catch (error) {
-    if (error.response) {
-      // Fehler von der ERP-API
-      next(new ExternalAPIError(
-        error.message,
-        { 
-          status: error.response.status,
-          data: error.response.data
-        },
-        'ERP'
-      ));
-    } else {
-      next(error);
-    }
-  }
-};
-
-/**
- * Einen bestimmten Beleg aus dem ERP-System abrufen
- * @param {Object} req - Express-Request-Objekt
- * @param {Object} res - Express-Response-Objekt
- * @param {Function} next - Express-Next-Funktion
- */
-const getBelegById = async (req, res, next) => {
-  try {
-    // Validierung der Eingabedaten
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      throw new ValidationError('Validierungsfehler', errors.array());
-    }
-
-    const { id } = req.params;
-    
-    // Cache-Schlüssel erstellen
-    const cacheKey = `erp:beleg:${id}`;
-    
-    // Zunächst versuchen, Daten aus dem Cache zu laden
-    const cachedData = await getCache(cacheKey);
-    
-    if (cachedData) {
-      logger.debug(`Beleginformation aus dem Cache abgerufen: ${cacheKey}`);
-      
-      return res.status(StatusCodes.OK).json({
-        status: 'success',
-        cached: true,
-        data: cachedData
-      });
-    }
-    
-    // Daten vom ERP-System abrufen
-    const apiResponse = await fetchERPData(`/api/documents/${id}`, {}, cacheKey);
-    
-    if (!apiResponse) {
-      throw new NotFoundError(`Beleg mit ID ${id} nicht gefunden`);
-    }
-    
-    logger.info(`Beleg mit ID ${id} vom ERP-System abgerufen`);
-    
-    res.status(StatusCodes.OK).json({
-      status: 'success',
-      cached: false,
-      data: apiResponse
-    });
-  } catch (error) {
-    if (error.response && error.response.status === 404) {
-      next(new NotFoundError(`Beleg mit ID ${req.params.id} nicht gefunden`));
-    } else if (error.response) {
-      // Anderer Fehler von der ERP-API
-      next(new ExternalAPIError(
-        error.message,
-        { 
-          status: error.response.status,
-          data: error.response.data
-        },
-        'ERP'
-      ));
-    } else {
-      next(error);
-    }
-  }
-};
-
-/**
- * Aufträge aus dem ERP-System abrufen
- * @param {Object} req - Express-Request-Objekt
- * @param {Object} res - Express-Response-Objekt
- * @param {Function} next - Express-Next-Funktion
- */
-const getAuftraege = async (req, res, next) => {
-  try {
-    // Validierung der Eingabedaten
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      throw new ValidationError('Validierungsfehler', errors.array());
-    }
-
-    const { 
-      status = '', 
-      von = '', 
-      bis = '', 
-      limit = 25, 
-      offset = 0 
-    } = req.query;
-    
-    // Cache-Schlüssel basierend auf den Abfrageparametern erstellen
-    const cacheKey = `erp:auftraege:${status}:${von}:${bis}:${limit}:${offset}`;
-    
-    // Zunächst versuchen, Daten aus dem Cache zu laden
-    const cachedData = await getCache(cacheKey);
-    
-    if (cachedData) {
-      logger.debug(`Auftragsinformationen aus dem Cache abgerufen: ${cacheKey}`);
-      
-      return res.status(StatusCodes.OK).json({
-        status: 'success',
-        cached: true,
-        data: cachedData
-      });
-    }
-    
-    // Parameter für die ERP-API-Anfrage
-    const params = {
-      limit: parseInt(limit, 10),
-      offset: parseInt(offset, 10)
-    };
-    
-    if (status) params.status = status;
-    if (von) params.dateFrom = von;
-    if (bis) params.dateTo = bis;
-    
-    // Daten vom ERP-System abrufen
-    const apiResponse = await fetchERPData('/api/orders', params, cacheKey);
-    
-    logger.info(`${apiResponse.items?.length || 0} Aufträge vom ERP-System abgerufen`);
-    
-    res.status(StatusCodes.OK).json({
-      status: 'success',
-      cached: false,
-      data: apiResponse
-    });
-  } catch (error) {
-    if (error.response) {
-      // Fehler von der ERP-API
-      next(new ExternalAPIError(
-        error.message,
-        { 
-          status: error.response.status,
-          data: error.response.data
-        },
-        'ERP'
-      ));
-    } else {
-      next(error);
-    }
-  }
-};
-
-/**
- * Einen bestimmten Auftrag aus dem ERP-System abrufen
- * @param {Object} req - Express-Request-Objekt
- * @param {Object} res - Express-Response-Objekt
- * @param {Function} next - Express-Next-Funktion
- */
-const getAuftragById = async (req, res, next) => {
-  try {
-    // Validierung der Eingabedaten
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      throw new ValidationError('Validierungsfehler', errors.array());
-    }
-
-    const { id } = req.params;
-    
-    // Cache-Schlüssel erstellen
-    const cacheKey = `erp:auftrag:${id}`;
-    
-    // Zunächst versuchen, Daten aus dem Cache zu laden
-    const cachedData = await getCache(cacheKey);
-    
-    if (cachedData) {
-      logger.debug(`Auftragsinformation aus dem Cache abgerufen: ${cacheKey}`);
-      
-      return res.status(StatusCodes.OK).json({
-        status: 'success',
-        cached: true,
-        data: cachedData
-      });
-    }
-    
-    // Daten vom ERP-System abrufen
-    const apiResponse = await fetchERPData(`/api/orders/${id}`, {}, cacheKey);
-    
-    if (!apiResponse) {
-      throw new NotFoundError(`Auftrag mit ID ${id} nicht gefunden`);
-    }
-    
-    logger.info(`Auftrag mit ID ${id} vom ERP-System abgerufen`);
-    
-    res.status(StatusCodes.OK).json({
-      status: 'success',
-      cached: false,
-      data: apiResponse
-    });
-  } catch (error) {
-    if (error.response && error.response.status === 404) {
-      next(new NotFoundError(`Auftrag mit ID ${req.params.id} nicht gefunden`));
-    } else if (error.response) {
-      // Anderer Fehler von der ERP-API
-      next(new ExternalAPIError(
-        error.message,
-        { 
-          status: error.response.status,
-          data: error.response.data
-        },
-        'ERP'
-      ));
-    } else {
-      next(error);
-    }
-  }
-};
-
-/**
- * Cache für ERP-Daten aktualisieren
- * @param {Object} req - Express-Request-Objekt
- * @param {Object} res - Express-Response-Objekt
- * @param {Function} next - Express-Next-Funktion
- */
-const refreshCache = async (req, res, next) => {
-  try {
-    const { entity, id } = req.body;
-    
-    if (entity && id) {
-      // Spezifischen Cache-Eintrag löschen
-      await deleteCache(`erp:${entity}:${id}`);
-      logger.info(`Cache für ${entity} mit ID ${id} gelöscht`);
-    } else if (entity) {
-      // Alle Cache-Einträge für eine bestimmte Entität löschen
-      await deleteCachePattern(`erp:${entity}:*`);
-      logger.info(`Cache für alle ${entity} gelöscht`);
-    } else {
-      // Alle ERP-bezogenen Cache-Einträge löschen
-      await deleteCachePattern('erp:*');
-      logger.info('Gesamter ERP-Cache gelöscht');
-    }
-    
-    res.status(StatusCodes.OK).json({
-      status: 'success',
-      message: 'Cache erfolgreich aktualisiert'
-    });
-  } catch (error) {
-    logger.error('Fehler beim Aktualisieren des Cache:', error);
+    logger.error('Error fetching customers from SelectLine', { error: error.message });
     next(error);
   }
 };
 
+/**
+ * Get a customer by ID
+ */
+const getKundeById = async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(StatusCodes.BAD_REQUEST).json({ 
+        errors: errors.array() 
+      });
+    }
+
+    const { id } = req.params;
+    const cacheKey = `kunde:${id}`;
+
+    // Try to get from cache first
+    const cachedData = await redis.client.get(cacheKey);
+    if (cachedData) {
+      return res.json(JSON.parse(cachedData));
+    }
+
+    // Get customer from SelectLine
+    const response = await selectLineService.get(`/customers/${id}`);
+    
+    // Cache the result
+    await redis.client.set(cacheKey, JSON.stringify(response.data), 'EX', CACHE_TTL);
+    
+    res.json(response.data);
+  } catch (error) {
+    logger.error('Error fetching customer by ID from SelectLine', { 
+      error: error.message,
+      customerId: req.params.id 
+    });
+    next(error);
+  }
+};
+
+/**
+ * Get products from SelectLine
+ */
+const getArtikel = async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(StatusCodes.BAD_REQUEST).json({ 
+        errors: errors.array() 
+      });
+    }
+
+    const { limit = 20, offset = 0, search = '' } = req.query;
+    const cacheKey = `artikel:${limit}:${offset}:${search}`;
+
+    // Try to get from cache first
+    const cachedData = await redis.client.get(cacheKey);
+    if (cachedData) {
+      return res.json(JSON.parse(cachedData));
+    }
+
+    // Build query params
+    const params = {
+      limit,
+      offset
+    };
+
+    if (search) {
+      params.search = search;
+    }
+
+    // Get products from SelectLine
+    const response = await selectLineService.get('/articles', params);
+    
+    // Cache the results
+    await redis.client.set(cacheKey, JSON.stringify(response.data), 'EX', CACHE_TTL);
+    
+    res.json(response.data);
+  } catch (error) {
+    logger.error('Error fetching articles from SelectLine', { error: error.message });
+    next(error);
+  }
+};
+
+/**
+ * Get a product by ID
+ */
+const getArtikelById = async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(StatusCodes.BAD_REQUEST).json({ 
+        errors: errors.array() 
+      });
+    }
+
+    const { id } = req.params;
+    const cacheKey = `artikel:${id}`;
+
+    // Try to get from cache first
+    const cachedData = await redis.client.get(cacheKey);
+    if (cachedData) {
+      return res.json(JSON.parse(cachedData));
+    }
+
+    // Get product from SelectLine
+    const response = await selectLineService.get(`/articles/${id}`);
+    
+    // Cache the result
+    await redis.client.set(cacheKey, JSON.stringify(response.data), 'EX', CACHE_TTL);
+    
+    res.json(response.data);
+  } catch (error) {
+    logger.error('Error fetching article by ID from SelectLine', { 
+      error: error.message,
+      articleId: req.params.id 
+    });
+    next(error);
+  }
+};
+
+/**
+ * Get documents from SelectLine
+ */
+const getBelege = async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(StatusCodes.BAD_REQUEST).json({ 
+        errors: errors.array() 
+      });
+    }
+
+    const { typ, von, bis, limit = 20, offset = 0 } = req.query;
+    const cacheKey = `belege:${typ || ''}:${von || ''}:${bis || ''}:${limit}:${offset}`;
+
+    // Try to get from cache first
+    const cachedData = await redis.client.get(cacheKey);
+    if (cachedData) {
+      return res.json(JSON.parse(cachedData));
+    }
+
+    // Build query params
+    const params = {
+      limit,
+      offset
+    };
+
+    if (typ) params.type = typ;
+    if (von) params.from = von;
+    if (bis) params.to = bis;
+
+    // Get documents from SelectLine
+    const response = await selectLineService.get('/documents', params);
+    
+    // Cache the results
+    await redis.client.set(cacheKey, JSON.stringify(response.data), 'EX', CACHE_TTL);
+    
+    res.json(response.data);
+  } catch (error) {
+    logger.error('Error fetching documents from SelectLine', { error: error.message });
+    next(error);
+  }
+};
+
+/**
+ * Get a document by ID
+ */
+const getBelegById = async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(StatusCodes.BAD_REQUEST).json({ 
+        errors: errors.array() 
+      });
+    }
+
+    const { id } = req.params;
+    const cacheKey = `beleg:${id}`;
+
+    // Try to get from cache first
+    const cachedData = await redis.client.get(cacheKey);
+    if (cachedData) {
+      return res.json(JSON.parse(cachedData));
+    }
+
+    // Get document from SelectLine
+    const response = await selectLineService.get(`/documents/${id}`);
+    
+    // Cache the result
+    await redis.client.set(cacheKey, JSON.stringify(response.data), 'EX', CACHE_TTL);
+    
+    res.json(response.data);
+  } catch (error) {
+    logger.error('Error fetching document by ID from SelectLine', { 
+      error: error.message,
+      documentId: req.params.id 
+    });
+    next(error);
+  }
+};
+
+/**
+ * Get orders from SelectLine
+ */
+const getAuftraege = async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(StatusCodes.BAD_REQUEST).json({ 
+        errors: errors.array() 
+      });
+    }
+
+    const { status, von, bis, limit = 20, offset = 0 } = req.query;
+    const cacheKey = `auftraege:${status || ''}:${von || ''}:${bis || ''}:${limit}:${offset}`;
+
+    // Try to get from cache first
+    const cachedData = await redis.client.get(cacheKey);
+    if (cachedData) {
+      return res.json(JSON.parse(cachedData));
+    }
+
+    // Build query params
+    const params = {
+      limit,
+      offset
+    };
+
+    if (status) params.status = status;
+    if (von) params.from = von;
+    if (bis) params.to = bis;
+
+    // Get orders from SelectLine
+    const response = await selectLineService.get('/orders', params);
+    
+    // Cache the results
+    await redis.client.set(cacheKey, JSON.stringify(response.data), 'EX', CACHE_TTL);
+    
+    res.json(response.data);
+  } catch (error) {
+    logger.error('Error fetching orders from SelectLine', { error: error.message });
+    next(error);
+  }
+};
+
+/**
+ * Get an order by ID
+ */
+const getAuftragById = async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(StatusCodes.BAD_REQUEST).json({ 
+        errors: errors.array() 
+      });
+    }
+
+    const { id } = req.params;
+    const cacheKey = `auftrag:${id}`;
+
+    // Try to get from cache first
+    const cachedData = await redis.client.get(cacheKey);
+    if (cachedData) {
+      return res.json(JSON.parse(cachedData));
+    }
+
+    // Get order from SelectLine
+    const response = await selectLineService.get(`/orders/${id}`);
+    
+    // Cache the result
+    await redis.client.set(cacheKey, JSON.stringify(response.data), 'EX', CACHE_TTL);
+    
+    res.json(response.data);
+  } catch (error) {
+    logger.error('Error fetching order by ID from SelectLine', { 
+      error: error.message,
+      orderId: req.params.id 
+    });
+    next(error);
+  }
+};
+
+/**
+ * Refresh the cache
+ */
+const refreshCache = async (req, res, next) => {
+  try {
+    // Delete all keys with prefix 'kunde', 'artikel', 'beleg', 'auftrag'
+    const keys = await redis.client.keys('kunde:*');
+    keys.push(...await redis.client.keys('artikel:*'));
+    keys.push(...await redis.client.keys('beleg:*'));
+    keys.push(...await redis.client.keys('auftrag:*'));
+    
+    if (keys.length > 0) {
+      await redis.client.del(keys);
+    }
+    
+    res.status(StatusCodes.OK).json({
+      message: 'Cache successfully refreshed'
+    });
+  } catch (error) {
+    logger.error('Error refreshing cache', { error: error.message });
+    next(error);
+  }
+};
+
+// Export all functions
 module.exports = {
   getKunden,
   getKundeById,
