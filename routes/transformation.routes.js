@@ -1,7 +1,7 @@
 const express = require('express');
 const { param, query, body } = require('express-validator');
 const transformationController = require('../controllers/transformation.controller');
-const { authenticateJWT } = require('../middleware/auth.middleware');
+const { authenticateJWT } = require('../middlewares/auth.middleware');
 const router = express.Router();
 
 // Alle Transformationsrouten benötigen Authentifizierung

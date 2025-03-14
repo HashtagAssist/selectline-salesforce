@@ -190,18 +190,17 @@ const login = async (req, res, next) => {
       throw new ValidationError('Validierungsfehler', errors.array());
     }
 
-    const { email, password } = req.body;
-
+    const { username, password } = req.body;
     // Benutzer suchen
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ username });
     if (!user) {
-      throw new AuthenticationError('Ungültige E-Mail-Adresse oder Passwort');
+      throw new AuthenticationError('Ungültiger Benutzername oder Passwort');
     }
 
     // Passwort überprüfen
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      throw new AuthenticationError('Ungültige E-Mail-Adresse oder Passwort');
+      throw new AuthenticationError('Ungültiger Benutzername oder Passwort');
     }
 
     // JWT-Token erstellen
@@ -316,7 +315,6 @@ const getProfile = async (req, res, next) => {
   try {
     // Benutzer-ID aus dem JWT-Token extrahieren
     const userId = req.user.id;
-
     // Benutzer suchen
     const user = await User.findById(userId).select('-password');
     if (!user) {

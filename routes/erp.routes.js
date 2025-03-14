@@ -1,7 +1,7 @@
 const express = require('express');
 const { query, param } = require('express-validator');
 const erpController = require('../controllers/erp.controller');
-const { authenticateJWT, authorizeRoles } = require('../middleware/auth.middleware');
+const { authenticateJWT, authorizeRoles } = require('../middlewares/auth.middleware');
 const router = express.Router();
 
 // Alle ERP-Routen benötigen Authentifizierung

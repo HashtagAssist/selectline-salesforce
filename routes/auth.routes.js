@@ -2,6 +2,7 @@ const express = require('express');
 const { body } = require('express-validator');
 const authController = require('../controllers/auth.controller');
 const { validateRequest } = require('../middlewares/error-handler.middleware');
+const { authenticateJWT, authorizeRoles } = require('../middlewares/auth.middleware');
 
 const router = express.Router();
 
@@ -168,34 +169,34 @@ router.post('/refresh', authController.refreshToken);
  * @desc    Abrufen des Benutzerprofils
  * @access  Privat
  */
-router.get('/profile', authController.getProfile);
+router.get('/profile', authenticateJWT, authController.getProfile);
 
 /**
  * @route   PUT /api/auth/profile
  * @desc    Aktualisieren des Benutzerprofils
  * @access  Privat
  */
-router.put('/profile', authController.updateProfile);
+router.put('/profile', authenticateJWT, authController.updateProfile);
 
 /**
  * @route   POST /api/auth/change-password
  * @desc    Passwortänderung
  * @access  Privat
  */
-router.post('/change-password', changePasswordValidation, validateRequest, authController.changePassword);
+router.post('/change-password', authenticateJWT, changePasswordValidation, validateRequest, authController.changePassword);
 
 /**
  * @route   POST /api/auth/logout
  * @desc    Benutzerabmeldung (Invalidierung des Refresh-Tokens)
  * @access  Privat
  */
-router.post('/logout', authController.logout);
+router.post('/logout', authenticateJWT, authController.logout);
 
 /**
  * @route   DELETE /api/auth/users/:userId
  * @desc    Löscht einen Benutzeraccount
  * @access  Privat (nur eigener Account oder Admin)
  */
-router.delete('/users/:userId', authController.deleteUser);
+router.delete('/users/:userId', authenticateJWT, authController.deleteUser);
 
 module.exports = router; 
