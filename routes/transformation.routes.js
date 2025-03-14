@@ -151,4 +151,114 @@ router.post(
   transformationController.customTransformation
 );
 
+/**
+ * @route   GET /api/transform/list
+ * @desc    Liste aller verfügbaren Transformationen abrufen
+ * @access  Privat
+ */
+router.get(
+  '/list',
+  transformationController.getTransformationsList
+);
+
+/**
+ * @route   GET /api/transform/:id
+ * @desc    Details einer bestimmten Transformation abrufen
+ * @access  Privat
+ */
+router.get(
+  '/:id',
+  [
+    param('id')
+      .isString()
+      .notEmpty()
+      .withMessage('Transformations-ID ist erforderlich')
+  ],
+  transformationController.getTransformationById
+);
+
+/**
+ * @route   POST /api/transform
+ * @desc    Neue Transformation erstellen
+ * @access  Privat
+ */
+router.post(
+  '/',
+  [
+    body('name')
+      .isString()
+      .notEmpty()
+      .withMessage('Name ist erforderlich'),
+    body('source')
+      .isString()
+      .notEmpty()
+      .withMessage('Quellsystem ist erforderlich'),
+    body('target')
+      .isString()
+      .notEmpty()
+      .withMessage('Zielsystem ist erforderlich'),
+    body('objectType')
+      .isString()
+      .notEmpty()
+      .withMessage('Objekttyp ist erforderlich'),
+    body('transformationCode')
+      .isString()
+      .notEmpty()
+      .withMessage('Transformationscode ist erforderlich'),
+  ],
+  transformationController.createTransformation
+);
+
+/**
+ * @route   PUT /api/transform/:id
+ * @desc    Bestehende Transformation aktualisieren
+ * @access  Privat
+ */
+router.put(
+  '/:id',
+  [
+    param('id')
+      .isString()
+      .notEmpty()
+      .withMessage('Transformations-ID ist erforderlich'),
+    body('name')
+      .isString()
+      .notEmpty()
+      .withMessage('Name ist erforderlich'),
+    body('source')
+      .isString()
+      .notEmpty()
+      .withMessage('Quellsystem ist erforderlich'),
+    body('target')
+      .isString()
+      .notEmpty()
+      .withMessage('Zielsystem ist erforderlich'),
+    body('objectType')
+      .isString()
+      .notEmpty()
+      .withMessage('Objekttyp ist erforderlich'),
+    body('transformationCode')
+      .isString()
+      .notEmpty()
+      .withMessage('Transformationscode ist erforderlich'),
+  ],
+  transformationController.updateTransformation
+);
+
+/**
+ * @route   DELETE /api/transform/:id
+ * @desc    Transformation löschen
+ * @access  Privat
+ */
+router.delete(
+  '/:id',
+  [
+    param('id')
+      .isString()
+      .notEmpty()
+      .withMessage('Transformations-ID ist erforderlich')
+  ],
+  transformationController.deleteTransformation
+);
+
 module.exports = router; 

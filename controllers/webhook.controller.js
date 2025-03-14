@@ -475,10 +475,257 @@ const handleCustomEvent = async (req, res, next) => {
   }
 };
 
+/**
+ * Liste aller Webhooks abrufen
+ * @param {Object} req - Express-Request-Objekt
+ * @param {Object} res - Express-Response-Objekt
+ * @param {Function} next - Express-Next-Funktion
+ */
+const getWebhookList = async (req, res, next) => {
+  try {
+    // Simulierte Daten (in einer echten Anwendung würden wir diese aus einer Datenbank abrufen)
+    const webhooks = [
+      { id: 1, name: 'Neuer Benutzer', url: 'https://example.com/webhook1', events: 'user.created', active: true },
+      { id: 2, name: 'Daten aktualisiert', url: 'https://example.com/webhook2', events: 'data.updated', active: false },
+      { id: 3, name: 'Bestellung eingegangen', url: 'https://example.com/webhook3', events: 'order.created', active: true },
+      { id: 4, name: 'Produkt erstellt', url: 'https://example.com/webhook4', events: 'product.created', active: true },
+    ];
+
+    logger.info('Webhook-Liste abgerufen');
+    
+    res.status(StatusCodes.OK).json({
+      status: 'success',
+      data: webhooks
+    });
+  } catch (error) {
+    logger.error('Fehler beim Abrufen der Webhook-Liste:', error);
+    next(error);
+  }
+};
+
+/**
+ * Details eines bestimmten Webhooks abrufen
+ * @param {Object} req - Express-Request-Objekt
+ * @param {Object} res - Express-Response-Objekt
+ * @param {Function} next - Express-Next-Funktion
+ */
+const getWebhookById = async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      throw new ValidationError('Validierungsfehler', errors.array());
+    }
+
+    const { id } = req.params;
+    
+    // Simulierte Daten (in einer echten Anwendung würden wir diese aus einer Datenbank abrufen)
+    const webhooks = [
+      { id: 1, name: 'Neuer Benutzer', url: 'https://example.com/webhook1', events: 'user.created', active: true },
+      { id: 2, name: 'Daten aktualisiert', url: 'https://example.com/webhook2', events: 'data.updated', active: false },
+    ];
+    
+    const webhook = webhooks.find(w => w.id === parseInt(id, 10));
+    
+    if (!webhook) {
+      return res.status(StatusCodes.NOT_FOUND).json({
+        status: 'error',
+        message: `Webhook mit ID ${id} nicht gefunden`
+      });
+    }
+    
+    logger.info(`Webhook ${id} abgerufen`);
+    
+    res.status(StatusCodes.OK).json({
+      status: 'success',
+      data: webhook
+    });
+  } catch (error) {
+    logger.error(`Fehler beim Abrufen des Webhooks ${req.params.id}:`, error);
+    next(error);
+  }
+};
+
+/**
+ * Neuen Webhook erstellen
+ * @param {Object} req - Express-Request-Objekt
+ * @param {Object} res - Express-Response-Objekt
+ * @param {Function} next - Express-Next-Funktion
+ */
+const createWebhook = async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      throw new ValidationError('Validierungsfehler', errors.array());
+    }
+
+    const { name, url, events, active } = req.body;
+    
+    // Simulieren einer neuen Webhook-ID (in einer echten Anwendung würde diese von der Datenbank generiert)
+    const newId = 5;
+    
+    const newWebhook = {
+      id: newId,
+      name,
+      url,
+      events,
+      active: active !== undefined ? active : true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    logger.info(`Neuer Webhook erstellt: ${name}`);
+    
+    res.status(StatusCodes.CREATED).json({
+      status: 'success',
+      data: newWebhook
+    });
+  } catch (error) {
+    logger.error('Fehler beim Erstellen eines neuen Webhooks:', error);
+    next(error);
+  }
+};
+
+/**
+ * Bestehenden Webhook aktualisieren
+ * @param {Object} req - Express-Request-Objekt
+ * @param {Object} res - Express-Response-Objekt
+ * @param {Function} next - Express-Next-Funktion
+ */
+const updateWebhook = async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      throw new ValidationError('Validierungsfehler', errors.array());
+    }
+
+    const { id } = req.params;
+    const { name, url, events, active } = req.body;
+    
+    // Simulierte Daten (in einer echten Anwendung würden wir diese aus einer Datenbank abrufen)
+    const webhooks = [
+      { id: 1, name: 'Neuer Benutzer', url: 'https://example.com/webhook1', events: 'user.created', active: true },
+      { id: 2, name: 'Daten aktualisiert', url: 'https://example.com/webhook2', events: 'data.updated', active: false },
+    ];
+    
+    const webhookIndex = webhooks.findIndex(w => w.id === parseInt(id, 10));
+    
+    if (webhookIndex === -1) {
+      return res.status(StatusCodes.NOT_FOUND).json({
+        status: 'error',
+        message: `Webhook mit ID ${id} nicht gefunden`
+      });
+    }
+    
+    const updatedWebhook = {
+      ...webhooks[webhookIndex],
+      name,
+      url,
+      events,
+      active: active !== undefined ? active : webhooks[webhookIndex].active,
+      updatedAt: new Date().toISOString()
+    };
+    
+    logger.info(`Webhook ${id} aktualisiert`);
+    
+    res.status(StatusCodes.OK).json({
+      status: 'success',
+      data: updatedWebhook
+    });
+  } catch (error) {
+    logger.error(`Fehler beim Aktualisieren des Webhooks ${req.params.id}:`, error);
+    next(error);
+  }
+};
+
+/**
+ * Webhook löschen
+ * @param {Object} req - Express-Request-Objekt
+ * @param {Object} res - Express-Response-Objekt
+ * @param {Function} next - Express-Next-Funktion
+ */
+const deleteWebhook = async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      throw new ValidationError('Validierungsfehler', errors.array());
+    }
+
+    const { id } = req.params;
+    
+    // Simulieren einer Löschaktion (in einer echten Anwendung würden wir die Datenbankeinträge löschen)
+    logger.info(`Webhook ${id} gelöscht`);
+    
+    res.status(StatusCodes.OK).json({
+      status: 'success',
+      message: `Webhook mit ID ${id} erfolgreich gelöscht`
+    });
+  } catch (error) {
+    logger.error(`Fehler beim Löschen des Webhooks ${req.params.id}:`, error);
+    next(error);
+  }
+};
+
+/**
+ * Logs für einen bestimmten Webhook abrufen
+ * @param {Object} req - Express-Request-Objekt
+ * @param {Object} res - Express-Response-Objekt
+ * @param {Function} next - Express-Next-Funktion
+ */
+const getWebhookLogs = async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      throw new ValidationError('Validierungsfehler', errors.array());
+    }
+
+    const { id } = req.params;
+    
+    // Simulierte Log-Daten (in einer echten Anwendung würden wir diese aus einer Datenbank abrufen)
+    const logs = [
+      {
+        id: 1,
+        webhookId: parseInt(id, 10),
+        timestamp: new Date(Date.now() - 3600000).toISOString(),
+        status: 'success',
+        statusCode: 200,
+        requestBody: JSON.stringify({ event: 'user.created', data: { id: 123, name: 'Max Mustermann' } }),
+        responseBody: JSON.stringify({ success: true }),
+        duration: 120
+      },
+      {
+        id: 2,
+        webhookId: parseInt(id, 10),
+        timestamp: new Date(Date.now() - 7200000).toISOString(),
+        status: 'error',
+        statusCode: 500,
+        requestBody: JSON.stringify({ event: 'user.created', data: { id: 124, name: 'Erika Musterfrau' } }),
+        responseBody: JSON.stringify({ error: 'Internal Server Error' }),
+        duration: 350
+      }
+    ];
+    
+    logger.info(`Webhook-Logs für Webhook ${id} abgerufen`);
+    
+    res.status(StatusCodes.OK).json({
+      status: 'success',
+      data: logs
+    });
+  } catch (error) {
+    logger.error(`Fehler beim Abrufen der Webhook-Logs ${req.params.id}:`, error);
+    next(error);
+  }
+};
+
 module.exports = {
   handleAccountEvent,
   handleOpportunityEvent,
   handleProductEvent,
   handleContactEvent,
-  handleCustomEvent
+  handleCustomEvent,
+  getWebhookList,
+  getWebhookById,
+  createWebhook,
+  updateWebhook,
+  deleteWebhook,
+  getWebhookLogs
 }; 

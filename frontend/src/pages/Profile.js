@@ -13,7 +13,6 @@ import {
   CircularProgress,
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
-import { authApi } from '../services/api';
 
 const Profile = () => {
   const { user, logout } = useAuth();

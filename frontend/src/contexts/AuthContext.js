@@ -27,7 +27,7 @@ export const AuthProvider = ({ children }) => {
           } else {
             // Token ist gültig, setze Axios-Header und hole Benutzerdaten
             axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-            const response = await axios.get('/api/auth/me');
+            const response = await axios.get('/api/auth/profile');
             setUser(response.data);
           }
         } catch (err) {
@@ -41,17 +41,18 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
-  // Login-Funktion
-  const login = async (email, password) => {
+  // Login-Funktion (geändert, um username statt email zu verwenden)
+  const login = async (username, password) => {
     try {
       setIsLoading(true);
       setError(null);
       
-      const response = await axios.post('/api/auth/login', { email, password });
-      const { token, user: userData } = response.data;
+      const response = await axios.post('/api/auth/login', { username, password });
+      const { token, refreshToken, user: userData } = response.data.data;
       
       // Token im localStorage speichern
       localStorage.setItem('token', token);
+      localStorage.setItem('refreshToken', refreshToken);
       
       // Axios-Header für zukünftige Anfragen setzen
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -70,15 +71,25 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Logout-Funktion
-  const logout = () => {
-    // Token aus localStorage entfernen
-    localStorage.removeItem('token');
-    
-    // Axios-Header zurücksetzen
-    delete axios.defaults.headers.common['Authorization'];
-    
-    // Benutzer aus State entfernen
-    setUser(null);
+  const logout = async () => {
+    try {
+      // Wenn der Benutzer angemeldet ist, senden wir eine Logout-Anfrage
+      if (user) {
+        await axios.post('/api/auth/logout');
+      }
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      // Token aus localStorage entfernen
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      
+      // Axios-Header zurücksetzen
+      delete axios.defaults.headers.common['Authorization'];
+      
+      // Benutzer aus State entfernen
+      setUser(null);
+    }
   };
 
   // Registrierungsfunktion
@@ -105,7 +116,7 @@ export const AuthProvider = ({ children }) => {
       setIsLoading(true);
       setError(null);
       
-      await axios.post('/api/auth/reset-password-request', { email });
+      await axios.post('/api/auth/password-reset', { email });
       
       return { success: true };
     } catch (err) {

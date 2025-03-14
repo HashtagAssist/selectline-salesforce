@@ -59,12 +59,16 @@ const App = () => {
             {/* Log-Routen */}
             <Route path="/logs/:type" element={<LogViewer />} />
             
-            {/* Admin-Routen */}
-            <Route path="/users" element={<Users />} />
-            <Route path="/settings" element={<Settings />} />
-            
             {/* Standardroute */}
             <Route path="/" element={<Navigate to="/dashboard" />} />
+          </Route>
+        </Route>
+        
+        {/* Admin-Routen mit Rollenprüfung */}
+        <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+          <Route element={<DashboardLayout />}>
+            <Route path="/users" element={<Users />} />
+            <Route path="/settings" element={<Settings />} />
           </Route>
         </Route>
         

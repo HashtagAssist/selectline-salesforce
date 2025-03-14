@@ -51,27 +51,27 @@ export const authApi = {
 export const erpApi = {
   getStatus: () => api.get('/api/erp/status'),
   getSyncStatus: () => api.get('/api/erp/sync-status'),
-  getApiCalls: (params) => api.get('/api/erp/api-calls', { params }),
+  getApiCalls: (params) => api.get('/api/logs/api', { params }),
   triggerSync: (type) => api.post('/api/erp/sync', { type }),
 };
 
 // API-Funktionen für Transformationen
 export const transformationApi = {
-  getTransformations: () => api.get('/api/transformation/list'),
-  getTransformationById: (id) => api.get(`/api/transformation/${id}`),
-  createTransformation: (data) => api.post('/api/transformation', data),
-  updateTransformation: (id, data) => api.put(`/api/transformation/${id}`, data),
-  deleteTransformation: (id) => api.delete(`/api/transformation/${id}`),
+  getTransformations: () => api.get('/api/transform/list'),
+  getTransformationById: (id) => api.get(`/api/transform/${id}`),
+  createTransformation: (data) => api.post('/api/transform', data),
+  updateTransformation: (id, data) => api.put(`/api/transform/${id}`, data),
+  deleteTransformation: (id) => api.delete(`/api/transform/${id}`),
 };
 
 // API-Funktionen für Webhooks
 export const webhookApi = {
-  getWebhooks: () => api.get('/api/webhook/list'),
-  getWebhookById: (id) => api.get(`/api/webhook/${id}`),
-  createWebhook: (data) => api.post('/api/webhook', data),
-  updateWebhook: (id, data) => api.put(`/api/webhook/${id}`, data),
-  deleteWebhook: (id) => api.delete(`/api/webhook/${id}`),
-  getWebhookLogs: (id, params) => api.get(`/api/webhook/${id}/logs`, { params }),
+  getWebhooks: () => api.get('/api/webhooks/list'),
+  getWebhookById: (id) => api.get(`/api/webhooks/${id}`),
+  createWebhook: (data) => api.post('/api/webhooks', data),
+  updateWebhook: (id, data) => api.put(`/api/webhooks/${id}`, data),
+  deleteWebhook: (id) => api.delete(`/api/webhooks/${id}`),
+  getWebhookLogs: (id, params) => api.get(`/api/webhooks/${id}/logs`, { params }),
 };
 
 // API-Funktionen für Benutzer (nur für Admins)
@@ -101,6 +101,8 @@ export const statsApi = {
   getApiCallStats: (params) => api.get('/api/stats/api-calls', { params }),
   getSystemStats: () => api.get('/api/stats/system'),
   getUserStats: () => api.get('/api/stats/users'),
+  getTransformationStats: (params) => api.get('/api/stats/transformations', { params }),
+  getWebhookStats: (params) => api.get('/api/stats/webhooks', { params })
 };
 
 export default api; 

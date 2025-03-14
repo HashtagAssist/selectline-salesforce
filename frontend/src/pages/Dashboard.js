@@ -56,28 +56,8 @@ const StatCard = ({ title, value, color, icon, description }) => {
 // Dashboard-Hauptkomponente
 const Dashboard = () => {
   // Anfrage für Dashboard-Statistiken
-  const { data, isLoading, error } = useQuery('dashboardStats', statsApi.getDashboardStats);
+  const { data: apiResponse, isLoading, error } = useQuery('dashboardStats', statsApi.getDashboardStats);
   
-  // Beispieldaten für Diagramme (werden später durch echte Daten ersetzt)
-  const apiCallsData = [
-    { name: '00:00', calls: 12 },
-    { name: '04:00', calls: 8 },
-    { name: '08:00', calls: 23 },
-    { name: '12:00', calls: 35 },
-    { name: '16:00', calls: 29 },
-    { name: '20:00', calls: 17 },
-  ];
-  
-  const errorRateData = [
-    { name: 'Mo', rate: 2.3 },
-    { name: 'Di', rate: 1.8 },
-    { name: 'Mi', rate: 3.5 },
-    { name: 'Do', rate: 2.9 },
-    { name: 'Fr', rate: 1.2 },
-    { name: 'Sa', rate: 0.8 },
-    { name: 'So', rate: 0.5 },
-  ];
-
   if (isLoading) {
     return (
       <Box
@@ -102,17 +82,39 @@ const Dashboard = () => {
     );
   }
 
-  // Platzhalter für reale Daten, bis die API-Endpunkte implementiert sind
+  // Extrahiere die Daten aus der API-Antwort mit korrekter Struktur
+  // Die Backend-API gibt die Daten im Format { status: 'success', data: { ... } } zurück
+  const data = apiResponse?.data?.data;
+
+  // Fallback zu Platzhalter-Daten, wenn keine Daten verfügbar sind
   const stats = data || {
     apiCalls: {
       total: 12543,
       today: 243,
       successRate: 98.7,
+      history: [
+        { date: '2023-03-08', count: 432 },
+        { date: '2023-03-09', count: 389 },
+        { date: '2023-03-10', count: 467 },
+        { date: '2023-03-11', count: 501 },
+        { date: '2023-03-12', count: 387 },
+        { date: '2023-03-13', count: 420 },
+        { date: '2023-03-14', count: 450 }
+      ]
     },
     errors: {
       total: 157,
       today: 3,
       criticalCount: 0,
+      history: [
+        { date: '2023-03-08', count: 12 },
+        { date: '2023-03-09', count: 15 },
+        { date: '2023-03-10', count: 9 },
+        { date: '2023-03-11', count: 11 },
+        { date: '2023-03-12', count: 14 },
+        { date: '2023-03-13', count: 8 },
+        { date: '2023-03-14', count: 3 }
+      ]
     },
     system: {
       cpuUsage: 32,
@@ -123,11 +125,29 @@ const Dashboard = () => {
       total: 28,
       active: 24,
     },
-    webhooks: {
-      total: 12,
-      active: 10,
-    },
+    recentApiCalls: [
+      { timestamp: new Date(), endpoint: '/api/erp/customers', status: 200, duration: 254 },
+      { timestamp: new Date(Date.now() - 120000), endpoint: '/api/erp/products', status: 200, duration: 187 },
+      { timestamp: new Date(Date.now() - 240000), endpoint: '/api/erp/orders', status: 200, duration: 312 },
+      { timestamp: new Date(Date.now() - 360000), endpoint: '/api/webhooks/trigger', status: 400, duration: 78 }
+    ]
   };
+
+  // Daten für das API-Aufrufe-Diagramm aus echten Daten
+  const apiCallsData = stats.apiCalls.history.map(item => ({
+    name: item.date.substring(5), // Zeige nur MM-DD an
+    calls: item.count
+  }));
+  
+  // Daten für das Fehlerrate-Diagramm aus echten Daten
+  // Berechne die Fehlerrate für jeden Tag (Fehler / API-Aufrufe * 100)
+  const errorRateData = stats.errors.history.map((item, index) => {
+    const apiCallsForDay = stats.apiCalls.history[index]?.count || 1; // Vermeide Division durch 0
+    return {
+      name: item.date.substring(5), // Zeige nur MM-DD an
+      rate: (item.count / apiCallsForDay * 100).toFixed(1)
+    };
+  });
 
   return (
     <Box sx={{ flexGrow: 1, pb: 4 }}>
@@ -184,7 +204,7 @@ const Dashboard = () => {
         {/* API-Aufrufe-Diagramm */}
         <Grid item xs={12} md={8}>
           <Card>
-            <CardHeader title="API-Aufrufe (heute)" />
+            <CardHeader title="API-Aufrufe (letzte Woche)" />
             <CardContent sx={{ height: 300 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
@@ -196,7 +216,7 @@ const Dashboard = () => {
                   <YAxis />
                   <Tooltip />
                   <Legend />
-                  <Line type="monotone" dataKey="calls" stroke="#8884d8" activeDot={{ r: 8 }} />
+                  <Line type="monotone" dataKey="calls" name="Anzahl der Aufrufe" stroke="#8884d8" activeDot={{ r: 8 }} />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
@@ -218,7 +238,7 @@ const Dashboard = () => {
                   <YAxis />
                   <Tooltip />
                   <Legend />
-                  <Bar dataKey="rate" fill="#ff6666" />
+                  <Bar dataKey="rate" name="Fehlerrate %" fill="#ff6666" />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>

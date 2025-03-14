@@ -138,7 +138,7 @@ const ApiCalls = () => {
   };
   
   // Beispieldaten für die Tabelle, falls noch keine API-Integration vorhanden ist
-  const apiCalls = data?.data || [
+  const apiCalls = Array.isArray(data?.data) ? data.data : [
     {
       id: '1',
       endpoint: '/api/artikel',

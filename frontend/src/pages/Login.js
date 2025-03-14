@@ -22,7 +22,7 @@ const Login = () => {
   const { login } = useAuth();
   
   // State für Formularfelder
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   
@@ -34,8 +34,8 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!email || !password) {
-      setError('Bitte geben Sie E-Mail und Passwort ein.');
+    if (!username || !password) {
+      setError('Bitte geben Sie Benutzername und Passwort ein.');
       return;
     }
     
@@ -43,7 +43,7 @@ const Login = () => {
     setError('');
     
     try {
-      const result = await login(email, password);
+      const result = await login(username, password);
       
       if (result.success) {
         // Bei erfolgreicher Anmeldung zum Dashboard navigieren
@@ -109,13 +109,13 @@ const Login = () => {
               margin="normal"
               required
               fullWidth
-              id="email"
-              label="E-Mail-Adresse"
-              name="email"
-              autoComplete="email"
+              id="username"
+              label="Benutzername"
+              name="username"
+              autoComplete="username"
               autoFocus
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               disabled={isLoading}
             />
             <TextField

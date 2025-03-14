@@ -82,3 +82,68 @@ Bei jedem Pull Request sollte überprüft werden:
 - Wurden alle neuen Routen in der Swagger-Datei dokumentiert?
 - Wurden alle Änderungen an bestehenden Routen aktualisiert?
 - Stimmt die Dokumentation mit der Implementierung überein?
+
+
+# Authentifizierung und Frontend-Routes
+
+## Regel für Authentifizierung
+
+Bei der Implementierung der Authentifizierung im Frontend sind folgende Regeln zu beachten:
+
+1. **API-Aufrufe**:
+   - Alle API-Aufrufe im Frontend müssen die Backend-Routen korrekt ansprechen
+   - Die Pfade müssen mit denen im Backend übereinstimmen
+   - Die Datenstruktur der Anfragen und Antworten muss konsistent sein
+   - Falls eine neue Route hinzugefügt werden muss um eine Funktionalität zu liefern, muss zuerst die Backend route implementiert werden
+
+2. **Geschützte Routen**:
+   - Protected-Route-Komponente muss für alle Routen verwendet werden, die eine Authentifizierung erfordern
+   - Nicht-authentifizierte Benutzer müssen zur Login-Seite umgeleitet werden
+   - Admin-Routen müssen zusätzlich Benutzerrollen überprüfen
+
+## Beispiele
+
+Login-Implementierung:
+
+```javascript
+// Login mit Benutzername statt E-Mail
+const login = async (username, password) => {
+  try {
+    const response = await axios.post('/api/auth/login', { username, password });
+    const { token, refreshToken, user } = response.data.data;
+    
+    // Tokens speichern
+    localStorage.setItem('token', token);
+    localStorage.setItem('refreshToken', refreshToken);
+    
+    // Header für zukünftige Anfragen setzen
+    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    
+    return { success: true, user };
+  } catch (error) {
+    return { success: false, error: error.response?.data?.message };
+  }
+}
+```
+
+Protected-Route-Komponente:
+
+```javascript
+const ProtectedRoute = ({ element, requiredRole }) => {
+  const { user, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+  
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  if (requiredRole && user.role !== requiredRole) {
+    return <Navigate to="/forbidden" replace />;
+  }
+  
+  return element;
+}
+```

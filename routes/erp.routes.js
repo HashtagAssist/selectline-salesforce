@@ -1,11 +1,21 @@
 const express = require('express');
 const { query, param } = require('express-validator');
 const erpController = require('../controllers/erp.controller');
+const statsController = require('../controllers/stats.controller');
 const { authenticateJWT, authorizeRoles } = require('../middlewares/auth.middleware');
+const monitoringService = require('../services/monitoring.service');
+const { StatusCodes } = require('http-status-codes');
 const router = express.Router();
 
 // Alle ERP-Routen benötigen Authentifizierung
 router.use(authenticateJWT);
+
+/**
+ * @route   GET /api/erp/api-calls
+ * @desc    Liefert detaillierte Statistiken zu API-Aufrufen
+ * @access  Privat
+ */
+router.get('/api-calls', authenticateJWT, statsController.getApiCallStats);
 
 /**
  * @route   GET /api/erp/kunden

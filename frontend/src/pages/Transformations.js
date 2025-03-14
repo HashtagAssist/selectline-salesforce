@@ -43,26 +43,58 @@ import {
   Code as CodeIcon,
   Save as SaveIcon,
   ExpandMore as ExpandMoreIcon,
-  Visibility as VisibilityIcon,
 } from '@mui/icons-material';
-import { CodeEditor } from '../components/CodeEditor';
+import CodeEditor from '../components/CodeEditor';
+import { useQuery } from 'react-query';
+import { transformationApi, statsApi } from '../services/api';
 
 const Transformations = () => {
   // State für aktiven Tab
   const [tabValue, setTabValue] = useState(0);
   
-  // State für Transformationen
-  const [transformations, setTransformations] = useState([
-    {
-      id: 1,
-      name: 'Kunden nach Shopify',
-      source: 'erp',
-      target: 'shopify',
-      direction: 'erp_to_external',
-      objectType: 'customer',
-      active: true,
-      lastRun: '2023-08-15T12:30:45',
-      transformationCode: `// Beispiel-Transformation für Kunden nach Shopify
+  // API-Daten laden mit React Query
+  const { data: transformationsResponse, isLoading: transformationsLoading, error: transformationsError } = 
+    useQuery('transformations', transformationApi.getTransformations);
+  
+  // Statistiken laden mit React Query
+  const { data: statsResponse } = useQuery('transformationStats', 
+    () => statsApi.getTransformationStats({ timeRange: '7d' }));
+  
+  // Transformationen aus API-Antwort extrahieren
+  const transformationsData = transformationsResponse?.data?.data || [];
+  
+  // Transformations-Statistiken aus API-Antwort extrahieren
+  const transformationStats = statsResponse?.data?.data || {
+    total: 0,
+    active: 0,
+    history: [],
+    usage: { labels: [], data: [] }
+  };
+  
+  // State für Transformationen (wird aus API-Daten gefüllt oder mit Fallback-Daten)
+  const [transformations, setTransformations] = useState([]);
+  
+  // Daten aus der API übernehmen, wenn sie geladen sind
+  useEffect(() => {
+    if (transformationsData.length > 0) {
+      setTransformations(transformationsData);
+    }
+  }, [transformationsData]);
+  
+  // Fallback, wenn keine Daten vorhanden sind (für die lokale Entwicklung)
+  useEffect(() => {
+    if (transformations.length === 0 && !transformationsLoading) {
+      setTransformations([
+        {
+          id: 1,
+          name: 'Kunden nach Shopify',
+          source: 'erp',
+          target: 'shopify',
+          direction: 'erp_to_external',
+          objectType: 'customer',
+          active: true,
+          lastRun: '2023-08-15T12:30:45',
+          transformationCode: `// Beispiel-Transformation für Kunden nach Shopify
 function transform(customer) {
   return {
     first_name: customer.vorname,
@@ -86,17 +118,17 @@ function transform(customer) {
     ]
   };
 }`,
-    },
-    {
-      id: 2,
-      name: 'Produkte nach WooCommerce',
-      source: 'erp',
-      target: 'woocommerce',
-      direction: 'erp_to_external',
-      objectType: 'product',
-      active: true,
-      lastRun: '2023-08-14T10:15:22',
-      transformationCode: `// Beispiel-Transformation für Produkte nach WooCommerce
+        },
+        {
+          id: 2,
+          name: 'Produkte nach WooCommerce',
+          source: 'erp',
+          target: 'woocommerce',
+          direction: 'erp_to_external',
+          objectType: 'product',
+          active: true,
+          lastRun: '2023-08-14T10:15:22',
+          transformationCode: `// Beispiel-Transformation für Produkte nach WooCommerce
 function transform(product) {
   return {
     name: product.bezeichnung,
@@ -111,17 +143,17 @@ function transform(product) {
     weight: product.gewicht ? product.gewicht.toString() : "0"
   };
 }`,
-    },
-    {
-      id: 3,
-      name: 'Bestellungen von Shopify',
-      source: 'shopify',
-      target: 'erp',
-      direction: 'external_to_erp',
-      objectType: 'order',
-      active: true,
-      lastRun: '2023-08-15T08:45:12',
-      transformationCode: `// Beispiel-Transformation für Bestellungen von Shopify
+        },
+        {
+          id: 3,
+          name: 'Bestellungen von Shopify',
+          source: 'shopify',
+          target: 'erp',
+          direction: 'external_to_erp',
+          objectType: 'order',
+          active: true,
+          lastRun: '2023-08-15T08:45:12',
+          transformationCode: `// Beispiel-Transformation für Bestellungen von Shopify
 function transform(order) {
   return {
     auftragsnummer: \`SHOP-\${order.order_number}\`,
@@ -148,8 +180,10 @@ function transform(order) {
     }
   };
 }`,
-    },
-  ]);
+        },
+      ]);
+    }
+  }, [transformationsLoading, transformations.length]);
   
   // State für Dialog zum Erstellen/Bearbeiten von Transformationen
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -494,6 +528,62 @@ function transform(input) {
     const remainingSeconds = (seconds % 60).toFixed(1);
     return `${minutes} min ${remainingSeconds} s`;
   };
+
+  // Render-Logik für die Statistik-Karte
+  const renderStatisticsCard = () => {
+    if (!statsResponse) {
+      return (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+          <CircularProgress size={30} />
+        </Box>
+      );
+    }
+
+    return (
+      <Stack spacing={2}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="body1">Gesamt</Typography>
+          <Typography variant="h6">{transformationStats.total}</Typography>
+        </Box>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="body1">Aktiv</Typography>
+          <Typography variant="h6">{transformationStats.active}</Typography>
+        </Box>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="body1">Inaktiv</Typography>
+          <Typography variant="h6">{transformationStats.total - transformationStats.active}</Typography>
+        </Box>
+        {transformationStats.usage?.labels?.length > 0 && (
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="body1" gutterBottom>Meist verwendet:</Typography>
+            <Typography variant="h6">
+              {transformationStats.usage.labels[
+                transformationStats.usage.data.indexOf(Math.max(...transformationStats.usage.data))
+              ] || 'N/A'}
+            </Typography>
+          </Box>
+        )}
+      </Stack>
+    );
+  };
+
+  // Zeige Ladeindikator, wenn Daten noch geladen werden
+  if (transformationsLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', p: 4 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // Zeige Fehlermeldung, wenn ein Fehler aufgetreten ist
+  if (transformationsError) {
+    return (
+      <Alert severity="error" sx={{ m: 2 }}>
+        Fehler beim Laden der Transformationen: {transformationsError.message}
+      </Alert>
+    );
+  }
 
   return (
     <Box sx={{ flexGrow: 1, pb: 4 }}>

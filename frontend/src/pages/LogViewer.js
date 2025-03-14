@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery } from 'react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -44,8 +44,8 @@ const LogViewer = () => {
     search: '',
   });
   
-  // Mapping für Log-Typ auf Anzeigenamen und API-Funktion
-  const logTypes = {
+  // Mapping für Log-Typ auf Anzeigenamen und API-Funktion in useMemo eingewickelt
+  const logTypes = useMemo(() => ({
     system: {
       title: 'System-Logs',
       description: 'Allgemeine System-Logs des Backends',
@@ -81,7 +81,7 @@ const LogViewer = () => {
       description: 'Logs der E-Mail-Operationen',
       api: logsApi.getEmailLogs,
     },
-  };
+  }), []);
   
   // Falls der Log-Typ ungültig ist, zur System-Logs-Seite umleiten
   useEffect(() => {
@@ -157,7 +157,7 @@ const LogViewer = () => {
   };
   
   // Beispieldaten für die Tabelle, falls keine realen Daten vorhanden sind
-  const logs = data?.data || [];
+  const logs = Array.isArray(data?.data) ? data.data : [];
   const totalLogs = data?.pagination?.total || 0;
   
   // Hilfsfunktion für die Formatierung des Zeitstempels

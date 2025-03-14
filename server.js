@@ -29,12 +29,15 @@ const logger = winston.createLogger({
 const { connectRedis } = require('./services/redis.service');
 const { connectMongoDB } = require('./services/db.service');
 const emailService = require('./services/email.service');
+const monitoringService = require('./services/monitoring.service');
 
 // Routen importieren
 const authRoutes = require('./routes/auth.routes');
 const erpRoutes = require('./routes/erp.routes');
 const transformationRoutes = require('./routes/transformation.routes');
 const webhookRoutes = require('./routes/webhook.routes');
+const statsRoutes = require('./routes/stats.routes');
+const logsRoutes = require('./routes/logs.routes');
 
 // Express App initialisieren
 const app = express();
@@ -53,6 +56,14 @@ app.use(helmet({
 app.use(cors()); // Cross-Origin Resource Sharing aktivieren
 app.use(express.json()); // JSON-Body-Parser
 app.use(express.urlencoded({ extended: true }));
+
+// Monitoring-Middleware hinzufügen, um alle API-Aufrufe zu verfolgen
+app.use(monitoringService.apiMonitoringMiddleware);
+
+// Weiterleitungs-Middleware für veraltete API-Endpunkte
+const { apiRedirectMiddleware } = require('./middlewares/redirects.middleware');
+app.use('/api', apiRedirectMiddleware);
+
 app.use(morgan('combined')); // HTTP-Request-Logging
 
 // Rate Limiting
@@ -89,6 +100,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/erp', erpRoutes);
 app.use('/api/transform', transformationRoutes);
 app.use('/api/webhooks', webhookRoutes);
+app.use('/api/stats', statsRoutes);
+app.use('/api/logs', logsRoutes);
 
 // 404-Handler
 app.use((req, res) => {
@@ -132,6 +145,9 @@ app.use((err, req, res, next) => {
     request: requestInfo
   });
   
+  // Erfasse den Fehler auch im Monitoring-System
+  monitoringService.trackError(req.path, err.statusCode || 500, err.name || 'ServerError');
+  
   // Bestimme den HTTP-Statuscode
   const statusCode = err.statusCode || StatusCodes.INTERNAL_SERVER_ERROR;
   
@@ -164,6 +180,9 @@ const startServer = async () => {
     
     // E-Mail-Service initialisieren
     await emailService.initializeTransporter();
+    
+    // Monitoring-Service initialisieren
+    monitoringService.initializeMonitoring();
     
     const server = app.listen(PORT, () => {
       const os = require('os');
