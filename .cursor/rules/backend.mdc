@@ -1,0 +1,84 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# API-Routen und Swagger-Dokumentation
+
+## Regel für API-Routen
+
+Bei der Entwicklung von API-Routen sind folgende Regeln zu beachten:
+
+1. **Neue Routen dokumentieren**: 
+   - Jede neu erstellte Route MUSS in der Swagger-Dokumentation hinzugefügt werden
+   - Die Swagger-Definition muss vollständig sein (Pfad, Methode, Parameter, Antworten)
+   - Beispielanfragen und -antworten sollten, wenn möglich, hinzugefügt werden
+
+2. **Bestehende Routen aktualisieren**:
+   - Jede Änderung an bestehenden Routen MUSS auch in der Swagger-Dokumentation aktualisiert werden
+   - Dies umfasst Änderungen an:
+     - Pfaden
+     - Parametern
+     - Validierungsregeln
+     - Antwortstrukturen
+     - Zugriffsberechtigungen
+
+3. **Sicherheitsaspekte**:
+   - Alle Authentifizierungs- und Autorisierungsanforderungen müssen korrekt dokumentiert werden
+   - Security-Schemas sollten für geschützte Endpunkte verwendet werden
+
+4. **Konsistenz**:
+   - Die Dokumentation sollte konsistent sein mit der tatsächlichen Implementierung
+   - Statuscode-Verwendung, Fehlermeldungen und Datenstrukturen sollten einheitlich sein
+
+## Betroffene Dateien
+
+- Routes-Dateien: `routes/*.routes.js`
+- Swagger-Dokumentation: `swagger.yaml` oder `swagger.json`
+
+## Beispiel
+
+Für eine neue Route in `auth.routes.js`:
+
+```javascript
+/**
+ * @route   POST /api/auth/example
+ * @desc    Beispiel-Endpunkt
+ * @access  Privat
+ */
+router.post('/example', validateRequest, authController.example);
+```
+
+Muss ein entsprechender Eintrag in der Swagger-Datei erfolgen:
+
+```yaml
+paths:
+  /api/auth/example:
+    post:
+      tags:
+        - Authentication
+      summary: Beispiel-Endpunkt
+      description: Detaillierte Beschreibung des Endpunkts
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExampleRequest'
+      responses:
+        '200':
+          description: Erfolgreiche Antwort
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExampleResponse'
+```
+
+## Überprüfung
+
+Bei jedem Pull Request sollte überprüft werden:
+- Wurden alle neuen Routen in der Swagger-Datei dokumentiert?
+- Wurden alle Änderungen an bestehenden Routen aktualisiert?
+- Stimmt die Dokumentation mit der Implementierung überein?
