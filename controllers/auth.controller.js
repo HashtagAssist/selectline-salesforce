@@ -659,6 +659,65 @@ const generateRefreshToken = async (userId) => {
   return token;
 };
 
+/**
+ * Benutzer löschen
+ * @param {Object} req - Express-Request-Objekt
+ * @param {Object} res - Express-Response-Objekt
+ * @param {Function} next - Express-Next-Funktion
+ */
+const deleteUser = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    
+    // Überprüfen, ob der Benutzer der Anfragende selbst ist oder Admin-Rechte hat
+    const isOwnAccount = req.user.id === userId;
+    const isAdmin = req.user.role === 'admin';
+    
+    if (!isOwnAccount && !isAdmin) {
+      throw new AuthenticationError('You are not authorized to delete this user account');
+    }
+    
+    logger.info('User deletion requested', { 
+      userId,
+      requestedBy: req.user.id,
+      isOwnAccount,
+      isAdmin
+    });
+    
+    // Benutzer in der Datenbank suchen
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      throw new NotFoundError('User not found');
+    }
+    
+    // Erst alle abhängigen Daten löschen
+    // Zum Beispiel: Refresh-Tokens des Benutzers
+    await RefreshToken.deleteMany({ userId });
+    
+    // Dann den Benutzer selbst löschen
+    await User.deleteOne({ _id: userId });
+    
+    logger.info('User successfully deleted', { 
+      deletedUserId: userId,
+      username: user.username,
+      email: user.email
+    });
+    
+    res.status(StatusCodes.OK).json({
+      status: 'success',
+      message: 'User account has been successfully deleted'
+    });
+  } catch (error) {
+    logger.error('Error deleting user', {
+      error: error.message,
+      userId: req.params.userId,
+      requestedBy: req.user?.id
+    });
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -669,5 +728,6 @@ module.exports = {
   requestPasswordReset,
   resetPassword,
   updateProfile,
-  changePassword
+  changePassword,
+  deleteUser
 }; 

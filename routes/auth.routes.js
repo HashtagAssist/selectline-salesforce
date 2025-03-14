@@ -191,4 +191,11 @@ router.post('/change-password', changePasswordValidation, validateRequest, authC
  */
 router.post('/logout', authController.logout);
 
+/**
+ * @route   DELETE /api/auth/users/:userId
+ * @desc    Löscht einen Benutzeraccount
+ * @access  Privat (nur eigener Account oder Admin)
+ */
+router.delete('/users/:userId', authController.deleteUser);
+
 module.exports = router; 
