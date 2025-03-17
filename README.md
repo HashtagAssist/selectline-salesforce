@@ -163,6 +163,15 @@ npm start
 - `POST /api/auth/refresh-token` - Aktualisieren des JWT-Tokens
 - `POST /api/auth/logout` - Benutzerabmeldung
 
+### Benutzerverwaltung
+
+- `GET /api/auth/users` - Alle Benutzer abrufen (nur für Admins)
+- `GET /api/auth/users/:userId` - Einen bestimmten Benutzer abrufen (nur für Admins)
+- `POST /api/auth/users` - Neuen Benutzer erstellen (nur für Admins)
+- `PUT /api/auth/users/:userId` - Benutzer aktualisieren (nur für Admins)
+- `PATCH /api/auth/users/:userId/status` - Benutzerstatus ändern (nur für Admins)
+- `DELETE /api/auth/users/:userId` - Benutzer löschen (nur für Admins)
+
 ### ERP-Daten
 
 - `GET /api/erp/kunden` - Kunden aus dem ERP-System abrufen

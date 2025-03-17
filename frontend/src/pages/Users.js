@@ -57,6 +57,7 @@ const Users = () => {
     username: '',
     email: '',
     password: '',
+    passwordConfirm: '',
     firstName: '',
     lastName: '',
     role: 'user',
@@ -64,7 +65,6 @@ const Users = () => {
   
   // Anfrage für Benutzerliste
   const { data: users, isLoading, error } = useQuery('users', userApi.getUsers);
-  
   // Mutation für Benutzer erstellen
   const createMutation = useMutation(userApi.createUser, {
     onSuccess: () => {
@@ -127,6 +127,7 @@ const Users = () => {
       username: '',
       email: '',
       password: '',
+      passwordConfirm: '',
       firstName: '',
       lastName: '',
       role: 'user',
@@ -144,6 +145,7 @@ const Users = () => {
       username: user.username,
       email: user.email,
       password: '',  // Passwort leer lassen, da es nicht angezeigt werden soll
+      passwordConfirm: '',
       firstName: user.firstName || '',
       lastName: user.lastName || '',
       role: user.role,
@@ -219,8 +221,8 @@ const Users = () => {
     );
   }
   
-  // Beispieldaten für die Tabelle, falls keine realen Daten vorhanden sind
-  const userList = users || [
+  // Korrekter Zugriff auf die Benutzerliste aus der API-Antwort
+  const userList = users?.data?.data?.users || [
     { _id: '1', username: 'admin', email: 'admin@example.com', role: 'admin', firstName: 'Admin', lastName: 'User', isActive: true, createdAt: new Date().toISOString() },
     { _id: '2', username: 'user1', email: 'user1@example.com', role: 'user', firstName: 'Normal', lastName: 'User', isActive: true, createdAt: new Date().toISOString() },
     { _id: '3', username: 'user2', email: 'user2@example.com', role: 'user', firstName: 'Another', lastName: 'User', isActive: false, createdAt: new Date().toISOString() },
@@ -364,6 +366,15 @@ const Users = () => {
                 fullWidth
                 required
               />
+              <TextField
+                name="passwordConfirm"
+                label="Passwort bestätigen"
+                type="password"
+                value={formData.passwordConfirm || ''}
+                onChange={handleChange}
+                fullWidth
+                required
+              />
               <Box sx={{ display: 'flex', gap: 2 }}>
                 <TextField
                   name="firstName"
@@ -441,6 +452,14 @@ const Users = () => {
                 label="Passwort (leer lassen für keine Änderung)"
                 type="password"
                 value={formData.password}
+                onChange={handleChange}
+                fullWidth
+              />
+              <TextField
+                name="passwordConfirm"
+                label="Passwort bestätigen"
+                type="password"
+                value={formData.passwordConfirm || ''}
                 onChange={handleChange}
                 fullWidth
               />
