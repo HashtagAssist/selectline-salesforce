@@ -202,6 +202,15 @@ npm start
 - `POST /api/webhooks/salesforce/contact` - Verarbeiten von Salesforce Contact-Events
 - `POST /api/webhooks/salesforce/custom` - Verarbeiten von benutzerdefinierten Salesforce-Events
 
+### Statistiken
+
+- `GET /api/stats/dashboard` - Allgemeine Statistiken für das Dashboard abrufen
+- `GET /api/stats/api-calls` - Detaillierte Statistiken zu API-Aufrufen abrufen
+- `GET /api/stats/system` - Systemstatistiken (CPU, Speicher, Festplatte) abrufen
+- `GET /api/stats/users` - Benutzerstatistiken abrufen (nur für Admins)
+- `GET /api/stats/transformations` - Statistiken zu Datentransformationen abrufen
+- `GET /api/stats/webhooks` - Statistiken zu Webhooks abrufen
+
 ## Fehlerbehebung
 
 ### MongoDB-Verbindungsprobleme
