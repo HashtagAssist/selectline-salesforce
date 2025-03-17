@@ -85,7 +85,6 @@ const Dashboard = () => {
   // Extrahiere die Daten aus der API-Antwort mit korrekter Struktur
   // Die Backend-API gibt die Daten im Format { status: 'success', data: { ... } } zurück
   const data = apiResponse?.data?.data;
-
   // Keine Mock-Daten mehr verwenden
   // Wenn keine Daten vom Backend kommen, zeigen wir das entsprechend an
   if (!data) {
