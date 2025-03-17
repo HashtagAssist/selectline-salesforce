@@ -12,153 +12,218 @@ const logger = winston.createLogger({
   ]
 });
 
-// In-Memory-Speicherung für Metriken
-// In einer Produktionsumgebung würde man dies in einer Datenbank speichern
-const metricsStore = {
-  apiCalls: {
-    total: 0,
-    today: 0,
-    successRate: 100,
-    history: [],
-    endpoints: {}
-  },
-  errors: {
-    total: 0,
-    today: 0,
-    criticalCount: 0,
-    history: [],
-    byType: {},
-    byEndpoint: {}
-  },
-  transformations: {
-    total: 0,
-    active: 0,
-    usage: {},
-    history: []
-  },
-  webhooks: {
-    total: 0,
-    active: 0,
-    calls: [],
-    successRate: 100,
-    byEndpoint: {}
-  },
+// MongoDB-Schemas und Modelle für Metriken
+
+// Schema für API-Aufrufe
+const ApiCallSchema = new mongoose.Schema({
+  date: { type: String, required: true, index: true },
+  count: { type: Number, default: 0 },
+  endpoint: { type: String, required: false },
+  status: { type: Number, required: false },
+  duration: { type: Number, required: false },
+  timestamp: { type: Date, default: Date.now }
+});
+
+// Schema für Fehler
+const ErrorSchema = new mongoose.Schema({
+  date: { type: String, required: true, index: true },
+  count: { type: Number, default: 0 },
+  endpoint: { type: String, required: false },
+  status: { type: Number, required: false },
+  errorType: { type: String, required: false },
+  timestamp: { type: Date, default: Date.now }
+});
+
+// Schema für Transformationen
+const TransformationSchema = new mongoose.Schema({
+  date: { type: String, required: true, index: true },
+  count: { type: Number, default: 0 },
+  type: { type: String, required: false },
+  isSuccess: { type: Boolean, default: true },
+  timestamp: { type: Date, default: Date.now }
+});
+
+// Schema für Webhook-Aufrufe
+const WebhookSchema = new mongoose.Schema({
+  date: { type: String, required: true, index: true },
+  count: { type: Number, default: 0 },
+  successful: { type: Number, default: 0 },
+  endpoint: { type: String, required: false },
+  isSuccess: { type: Boolean, default: true },
+  timestamp: { type: Date, default: Date.now }
+});
+
+// Schema für Systemmetriken
+const SystemMetricsSchema = new mongoose.Schema({
+  date: { type: String, required: true, index: true },
+  type: { type: String, required: true, enum: ['cpu', 'memory', 'disk'] },
+  value: { type: Number, required: true },
+  timestamp: { type: Date, default: Date.now }
+});
+
+// Schema für Metrik-Konfiguration (aktive Transformationen, Webhooks, etc.)
+const ConfigSchema = new mongoose.Schema({
+  type: { type: String, required: true, unique: true },
+  count: { type: Number, default: 0 },
+  active: { type: Number, default: 0 },
+  lastUpdated: { type: Date, default: Date.now }
+});
+
+// Mongoose-Modelle erstellen
+const ApiCall = mongoose.model('ApiCall', ApiCallSchema);
+const Error = mongoose.model('Error', ErrorSchema);
+const Transformation = mongoose.model('Transformation', TransformationSchema);
+const Webhook = mongoose.model('Webhook', WebhookSchema);
+const SystemMetric = mongoose.model('SystemMetric', SystemMetricsSchema);
+const Config = mongoose.model('Config', ConfigSchema);
+
+// Temporärer Zwischenspeicher für aktuelle Werte
+const currentMetrics = {
+  apiCalls: { today: 0 },
+  errors: { today: 0 },
   system: {
     cpuUsage: 0,
     memoryUsage: 0,
     diskUsage: 0,
-    uptime: 0,
-    history: {
-      cpu: [],
-      memory: [],
-      disk: []
-    }
+    uptime: 0
   },
   recentApiCalls: []
 };
 
 // Initialisieren der historischen Daten für die letzten 7 Tage
-function initializeHistoricalData() {
+async function initializeHistoricalData() {
   const now = new Date();
   const oneDay = 24 * 60 * 60 * 1000; // Millisekunden in einem Tag
+  
+  // Prüfen, ob bereits Daten vorhanden sind
+  const existingApiCalls = await ApiCall.find({}).sort({date: -1}).limit(1);
+  if (existingApiCalls.length > 0) {
+    logger.info('Historische Daten bereits in der Datenbank vorhanden');
+    return;
+  }
+  
+  logger.info('Erstelle initiale historische Metriken für die letzten 7 Tage');
+  
+  const configPromises = [
+    new Config({ type: 'transformations', count: 24, active: 18 }).save(),
+    new Config({ type: 'webhooks', count: 12, active: 10 }).save()
+  ];
+  
+  await Promise.all(configPromises);
+  
+  const bulkOps = [];
   
   for (let i = 6; i >= 0; i--) {
     const date = new Date(now.getTime() - (i * oneDay));
     const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD Format
     
-    metricsStore.apiCalls.history.push({
-      date: dateStr,
-      count: Math.floor(Math.random() * 500) + 300 // Zufällige Werte zwischen 300-800
-    });
+    // API-Aufrufe
+    const apiCallCount = Math.floor(Math.random() * 500) + 300;
+    bulkOps.push(new ApiCall({ 
+      date: dateStr, 
+      count: apiCallCount
+    }));
     
-    metricsStore.errors.history.push({
-      date: dateStr,
-      count: Math.floor(Math.random() * 20) + 5 // Zufällige Werte zwischen 5-25
-    });
+    // Fehler
+    const errorCount = Math.floor(Math.random() * 20) + 5;
+    bulkOps.push(new Error({ 
+      date: dateStr, 
+      count: errorCount
+    }));
     
-    metricsStore.transformations.history.push({
-      date: dateStr,
-      count: Math.floor(Math.random() * 30) + 10 // Zufällige Werte zwischen 10-40
-    });
+    // Transformationen
+    const transformationCount = Math.floor(Math.random() * 30) + 10;
+    bulkOps.push(new Transformation({ 
+      date: dateStr, 
+      count: transformationCount
+    }));
     
-    metricsStore.webhooks.calls.push({
-      date: dateStr,
-      count: Math.floor(Math.random() * 50) + 20, // Zufällige Werte zwischen 20-70
-      successful: Math.floor(Math.random() * 45) + 20 // Etwas weniger als count
-    });
+    // Webhooks
+    const webhookCount = Math.floor(Math.random() * 50) + 20;
+    const webhookSuccessful = Math.floor(Math.random() * 45) + 20;
+    bulkOps.push(new Webhook({ 
+      date: dateStr, 
+      count: webhookCount,
+      successful: webhookSuccessful
+    }));
     
-    metricsStore.system.history.cpu.push({
-      date: dateStr,
-      value: Math.floor(Math.random() * 40) + 20 // Zufällige Werte zwischen 20-60%
-    });
+    // System-Metriken
+    bulkOps.push(new SystemMetric({ 
+      date: dateStr, 
+      type: 'cpu', 
+      value: Math.floor(Math.random() * 40) + 20
+    }));
     
-    metricsStore.system.history.memory.push({
-      date: dateStr,
-      value: Math.floor(Math.random() * 30) + 30 // Zufällige Werte zwischen 30-60%
-    });
+    bulkOps.push(new SystemMetric({ 
+      date: dateStr, 
+      type: 'memory', 
+      value: Math.floor(Math.random() * 30) + 30
+    }));
     
-    metricsStore.system.history.disk.push({
-      date: dateStr,
-      value: Math.floor(Math.random() * 20) + 20 // Zufällige Werte zwischen 20-40%
-    });
+    bulkOps.push(new SystemMetric({ 
+      date: dateStr, 
+      type: 'disk', 
+      value: Math.floor(Math.random() * 20) + 20
+    }));
   }
-  
-  // Berechne zusammenfassende Metriken
-  metricsStore.apiCalls.total = metricsStore.apiCalls.history.reduce((sum, day) => sum + day.count, 0);
-  metricsStore.errors.total = metricsStore.errors.history.reduce((sum, day) => sum + day.count, 0);
-  metricsStore.apiCalls.today = metricsStore.apiCalls.history[6].count;
-  metricsStore.errors.today = metricsStore.errors.history[6].count;
-  metricsStore.apiCalls.successRate = 100 - ((metricsStore.errors.total / metricsStore.apiCalls.total) * 100).toFixed(1);
   
   // Demo-Endpunkte für API-Aufrufe
   const endpoints = ['/api/erp/customers', '/api/erp/products', '/api/erp/orders', '/api/webhooks/trigger'];
   endpoints.forEach(endpoint => {
-    metricsStore.apiCalls.endpoints[endpoint] = Math.floor(Math.random() * 2000) + 1000;
-    metricsStore.errors.byEndpoint[endpoint] = Math.floor(Math.random() * 50);
+    bulkOps.push(new ApiCall({ 
+      date: now.toISOString().split('T')[0],
+      endpoint,
+      count: Math.floor(Math.random() * 2000) + 1000
+    }));
   });
   
   // Demo-Fehlertypen
   const errorTypes = ['ValidationError', 'AuthenticationError', 'DatabaseError', 'NetworkError', 'TimeoutError'];
-  errorTypes.forEach(type => {
-    metricsStore.errors.byType[type] = Math.floor(Math.random() * 30) + 5;
+  errorTypes.forEach(errorType => {
+    bulkOps.push(new Error({ 
+      date: now.toISOString().split('T')[0],
+      errorType,
+      count: Math.floor(Math.random() * 30) + 5
+    }));
   });
   
   // Demo-Transformationen
-  metricsStore.transformations.total = 24;
-  metricsStore.transformations.active = 18;
   const transformationTypes = ['Kunden nach Shopify', 'Produkte nach WooCommerce', 'Bestellungen nach SelectLine', 'Lager nach Magento'];
   transformationTypes.forEach(type => {
-    metricsStore.transformations.usage[type] = Math.floor(Math.random() * 500) + 100;
+    bulkOps.push(new Transformation({ 
+      date: now.toISOString().split('T')[0],
+      type,
+      count: Math.floor(Math.random() * 500) + 100
+    }));
   });
   
   // Demo-Webhooks
-  metricsStore.webhooks.total = 12;
-  metricsStore.webhooks.active = 10;
   const webhookEndpoints = ['/webhooks/shopify', '/webhooks/woocommerce', '/webhooks/selectline', '/webhooks/custom'];
   webhookEndpoints.forEach(endpoint => {
-    metricsStore.webhooks.byEndpoint[endpoint] = {
-      calls: Math.floor(Math.random() * 300) + 100,
-      successful: Math.floor(Math.random() * 280) + 100
-    };
+    const calls = Math.floor(Math.random() * 300) + 100;
+    const successful = Math.floor(Math.random() * 280) + 100;
+    bulkOps.push(new Webhook({ 
+      date: now.toISOString().split('T')[0],
+      endpoint,
+      count: calls,
+      successful
+    }));
   });
   
   // Demo-Systemdaten
-  updateSystemMetrics();
+  await updateSystemMetrics();
   
-  // Demo-Aktuelle API-Aufrufe
-  for (let i = 0; i < 10; i++) {
-    const timestamp = new Date(now.getTime() - (i * 60000)); // Jede Minute ein Eintrag
-    metricsStore.recentApiCalls.push({
-      timestamp,
-      endpoint: endpoints[Math.floor(Math.random() * endpoints.length)],
-      status: Math.random() > 0.1 ? 200 : 400, // 10% Fehlerrate
-      duration: Math.floor(Math.random() * 300) + 50 // 50-350ms
-    });
+  // Alle Dokumente in einem Bulk-Insert hinzufügen
+  try {
+    await Promise.all(bulkOps.map(doc => doc.save()));
+    logger.info('Historische Daten erfolgreich initialisiert');
+  } catch (error) {
+    logger.error('Fehler beim Initialisieren historischer Daten', { error });
   }
 }
 
 // Aktualisiert die aktuellen Systemmetriken
-function updateSystemMetrics() {
+async function updateSystemMetrics() {
   try {
     // CPU-Auslastung
     const cpus = os.cpus();
@@ -173,25 +238,42 @@ function updateSystemMetrics() {
     }
     
     const cpuUsage = 100 - (totalIdle / totalTick * 100);
-    metricsStore.system.cpuUsage = Math.round(cpuUsage);
+    currentMetrics.system.cpuUsage = Math.round(cpuUsage);
     
     // Speicherauslastung
     const totalMem = os.totalmem();
     const freeMem = os.freemem();
     const memUsage = ((totalMem - freeMem) / totalMem) * 100;
-    metricsStore.system.memoryUsage = Math.round(memUsage);
+    currentMetrics.system.memoryUsage = Math.round(memUsage);
     
     // Disk-Nutzung (Schätzung - in einer realen Anwendung würden Sie df oder ähnliches verwenden)
     // Hier verwenden wir eine zufällige Zahl für Demo-Zwecke
-    metricsStore.system.diskUsage = Math.floor(Math.random() * 30) + 20; // 20-50%
+    currentMetrics.system.diskUsage = Math.floor(Math.random() * 30) + 20; // 20-50%
     
     // Uptime in Sekunden
-    metricsStore.system.uptime = os.uptime();
+    currentMetrics.system.uptime = os.uptime();
+    
+    // In der Datenbank speichern
+    const today = new Date().toISOString().split('T')[0];
+    
+    const systemMetrics = [
+      { type: 'cpu', value: currentMetrics.system.cpuUsage },
+      { type: 'memory', value: currentMetrics.system.memoryUsage },
+      { type: 'disk', value: currentMetrics.system.diskUsage }
+    ];
+    
+    await Promise.all(systemMetrics.map(metric => 
+      SystemMetric.updateOne(
+        { date: today, type: metric.type },
+        { $set: { value: metric.value } },
+        { upsert: true }
+      )
+    ));
     
     logger.debug('System metrics updated', { 
-      cpu: metricsStore.system.cpuUsage,
-      memory: metricsStore.system.memoryUsage,
-      disk: metricsStore.system.diskUsage
+      cpu: currentMetrics.system.cpuUsage,
+      memory: currentMetrics.system.memoryUsage,
+      disk: currentMetrics.system.diskUsage
     });
   } catch (error) {
     logger.error('Error updating system metrics', { error });
@@ -199,39 +281,30 @@ function updateSystemMetrics() {
 }
 
 // Aktualisiert die täglichen Metriken
-function updateDailyMetrics() {
+async function updateDailyMetrics() {
   try {
     const today = new Date().toISOString().split('T')[0];
     
     // Prüfen, ob heute bereits in der Historie ist
-    const apiCallsToday = metricsStore.apiCalls.history.find(entry => entry.date === today);
+    const apiCallsToday = await ApiCall.findOne({ date: today, endpoint: null });
     if (!apiCallsToday) {
-      // Neuer Tag - füge einen neuen Eintrag hinzu und entferne den ältesten
-      metricsStore.apiCalls.history.push({ date: today, count: 0 });
-      metricsStore.apiCalls.history.shift();
+      logger.info('Erstelle neuen Tag für Metriken: ' + today);
       
-      metricsStore.errors.history.push({ date: today, count: 0 });
-      metricsStore.errors.history.shift();
+      // Neue Tageseinträge für verschiedene Metrik-Typen erstellen
+      await ApiCall.create({ date: today, count: 0 });
+      await Error.create({ date: today, count: 0 });
+      await Transformation.create({ date: today, count: 0 });
+      await Webhook.create({ date: today, count: 0, successful: 0 });
       
-      metricsStore.transformations.history.push({ date: today, count: 0 });
-      metricsStore.transformations.history.shift();
-      
-      metricsStore.webhooks.calls.push({ date: today, count: 0, successful: 0 });
-      metricsStore.webhooks.calls.shift();
-      
-      metricsStore.system.history.cpu.push({ date: today, value: metricsStore.system.cpuUsage });
-      metricsStore.system.history.cpu.shift();
-      
-      metricsStore.system.history.memory.push({ date: today, value: metricsStore.system.memoryUsage });
-      metricsStore.system.history.memory.shift();
-      
-      metricsStore.system.history.disk.push({ date: today, value: metricsStore.system.diskUsage });
-      metricsStore.system.history.disk.shift();
+      // Neue System-Metriken
+      await SystemMetric.create({ date: today, type: 'cpu', value: currentMetrics.system.cpuUsage });
+      await SystemMetric.create({ date: today, type: 'memory', value: currentMetrics.system.memoryUsage });
+      await SystemMetric.create({ date: today, type: 'disk', value: currentMetrics.system.diskUsage });
     }
     
     // Setze die heutigen Zähler zurück
-    metricsStore.apiCalls.today = 0;
-    metricsStore.errors.today = 0;
+    currentMetrics.apiCalls.today = 0;
+    currentMetrics.errors.today = 0;
     
     logger.info('Daily metrics reset');
   } catch (error) {
@@ -240,46 +313,54 @@ function updateDailyMetrics() {
 }
 
 // Verfolgt einen API-Aufruf
-function trackApiCall(endpoint, status, duration) {
+async function trackApiCall(endpoint, status, duration) {
   try {
     const today = new Date().toISOString().split('T')[0];
     const isSuccess = status >= 200 && status < 400;
+    const now = new Date();
     
-    // Gesamtzähler aktualisieren
-    metricsStore.apiCalls.total++;
-    metricsStore.apiCalls.today++;
-    
-    // Historie aktualisieren
-    const todayHistory = metricsStore.apiCalls.history.find(entry => entry.date === today);
-    if (todayHistory) {
-      todayHistory.count++;
-    }
+    // Tagesgesamtzähler aktualisieren
+    await ApiCall.updateOne(
+      { date: today, endpoint: null },
+      { $inc: { count: 1 } },
+      { upsert: true }
+    );
     
     // Endpunktstatistiken aktualisieren
-    if (!metricsStore.apiCalls.endpoints[endpoint]) {
-      metricsStore.apiCalls.endpoints[endpoint] = 0;
-    }
-    metricsStore.apiCalls.endpoints[endpoint]++;
+    await ApiCall.updateOne(
+      { date: today, endpoint },
+      { $inc: { count: 1 } },
+      { upsert: true }
+    );
+    
+    // Neuen API-Aufruf speichern
+    await ApiCall.create({
+      date: today,
+      endpoint,
+      status,
+      duration,
+      timestamp: now
+    });
     
     // Bei Fehlern auch Fehlerstatistiken aktualisieren
     if (!isSuccess) {
-      trackError(endpoint, status, 'APIError');
+      await trackError(endpoint, status, 'APIError');
     }
     
-    // Erfolgsrate aktualisieren
-    metricsStore.apiCalls.successRate = 100 - ((metricsStore.errors.total / metricsStore.apiCalls.total) * 100).toFixed(1);
+    // Aktuellen Zähler erhöhen
+    currentMetrics.apiCalls.today++;
     
     // Aktuelle API-Aufrufe aktualisieren
-    metricsStore.recentApiCalls.unshift({
-      timestamp: new Date(),
+    currentMetrics.recentApiCalls.unshift({
+      timestamp: now,
       endpoint,
       status,
       duration
     });
     
     // Beschränke die Liste auf die letzten 100 Aufrufe
-    if (metricsStore.recentApiCalls.length > 100) {
-      metricsStore.recentApiCalls.pop();
+    if (currentMetrics.recentApiCalls.length > 100) {
+      currentMetrics.recentApiCalls.pop();
     }
     
     logger.debug('API call tracked', { endpoint, status, duration, isSuccess });
@@ -289,35 +370,50 @@ function trackApiCall(endpoint, status, duration) {
 }
 
 // Verfolgt einen Fehler
-function trackError(endpoint, status, errorType) {
+async function trackError(endpoint, status, errorType) {
   try {
     const today = new Date().toISOString().split('T')[0];
     
-    // Gesamtzähler aktualisieren
-    metricsStore.errors.total++;
-    metricsStore.errors.today++;
-    
-    // Historie aktualisieren
-    const todayHistory = metricsStore.errors.history.find(entry => entry.date === today);
-    if (todayHistory) {
-      todayHistory.count++;
-    }
+    // Tagesgesamtzähler aktualisieren
+    await Error.updateOne(
+      { date: today, endpoint: null, errorType: null },
+      { $inc: { count: 1 } },
+      { upsert: true }
+    );
     
     // Fehlertyp-Statistiken aktualisieren
-    if (!metricsStore.errors.byType[errorType]) {
-      metricsStore.errors.byType[errorType] = 0;
-    }
-    metricsStore.errors.byType[errorType]++;
+    await Error.updateOne(
+      { date: today, errorType, endpoint: null },
+      { $inc: { count: 1 } },
+      { upsert: true }
+    );
     
     // Endpunktstatistiken aktualisieren
-    if (!metricsStore.errors.byEndpoint[endpoint]) {
-      metricsStore.errors.byEndpoint[endpoint] = 0;
-    }
-    metricsStore.errors.byEndpoint[endpoint]++;
+    await Error.updateOne(
+      { date: today, endpoint, errorType: null },
+      { $inc: { count: 1 } },
+      { upsert: true }
+    );
+    
+    // Neuen Fehler speichern
+    await Error.create({
+      date: today,
+      endpoint,
+      status,
+      errorType,
+      timestamp: new Date()
+    });
+    
+    // Aktuellen Zähler erhöhen
+    currentMetrics.errors.today++;
     
     // Kritische Fehler zählen (z.B. 5xx Fehler)
     if (status >= 500) {
-      metricsStore.errors.criticalCount++;
+      await Error.updateOne(
+        { date: today, errorType: 'CriticalError' },
+        { $inc: { count: 1 } },
+        { upsert: true }
+      );
     }
     
     logger.debug('Error tracked', { endpoint, status, errorType });
@@ -327,25 +423,35 @@ function trackError(endpoint, status, errorType) {
 }
 
 // Verfolgt eine Transformation
-function trackTransformation(transformationType, isSuccess) {
+async function trackTransformation(transformationType, isSuccess) {
   try {
     const today = new Date().toISOString().split('T')[0];
     
-    // Transformationsstatistiken aktualisieren
-    if (!metricsStore.transformations.usage[transformationType]) {
-      metricsStore.transformations.usage[transformationType] = 0;
-    }
-    metricsStore.transformations.usage[transformationType]++;
+    // Tagesgesamtzähler aktualisieren
+    await Transformation.updateOne(
+      { date: today, type: null },
+      { $inc: { count: 1 } },
+      { upsert: true }
+    );
     
-    // Historie aktualisieren
-    const todayHistory = metricsStore.transformations.history.find(entry => entry.date === today);
-    if (todayHistory) {
-      todayHistory.count++;
-    }
+    // Transformationstyp-Statistiken aktualisieren
+    await Transformation.updateOne(
+      { date: today, type: transformationType },
+      { $inc: { count: 1 } },
+      { upsert: true }
+    );
+    
+    // Neue Transformation speichern
+    await Transformation.create({
+      date: today,
+      type: transformationType,
+      isSuccess,
+      timestamp: new Date()
+    });
     
     // Bei Fehlern auch Fehlerstatistiken aktualisieren
     if (!isSuccess) {
-      trackError('transformation', 500, 'TransformationError');
+      await trackError('transformation', 500, 'TransformationError');
     }
     
     logger.debug('Transformation tracked', { transformationType, isSuccess });
@@ -355,45 +461,35 @@ function trackTransformation(transformationType, isSuccess) {
 }
 
 // Verfolgt einen Webhook-Aufruf
-function trackWebhook(endpoint, isSuccess) {
+async function trackWebhook(endpoint, isSuccess) {
   try {
     const today = new Date().toISOString().split('T')[0];
     
-    // Webhook-Statistiken aktualisieren
-    if (!metricsStore.webhooks.byEndpoint[endpoint]) {
-      metricsStore.webhooks.byEndpoint[endpoint] = {
-        calls: 0,
-        successful: 0
-      };
-    }
-    metricsStore.webhooks.byEndpoint[endpoint].calls++;
-    if (isSuccess) {
-      metricsStore.webhooks.byEndpoint[endpoint].successful++;
-    }
+    // Tagesgesamtzähler aktualisieren
+    await Webhook.updateOne(
+      { date: today, endpoint: null },
+      { $inc: { count: 1, successful: isSuccess ? 1 : 0 } },
+      { upsert: true }
+    );
     
-    // Historie aktualisieren
-    const todayHistory = metricsStore.webhooks.calls.find(entry => entry.date === today);
-    if (todayHistory) {
-      todayHistory.count++;
-      if (isSuccess) {
-        todayHistory.successful++;
-      }
-    }
+    // Endpunktstatistiken aktualisieren
+    await Webhook.updateOne(
+      { date: today, endpoint },
+      { $inc: { count: 1, successful: isSuccess ? 1 : 0 } },
+      { upsert: true }
+    );
     
-    // Erfolgsrate aktualisieren
-    let totalCalls = 0;
-    let totalSuccessful = 0;
-    
-    Object.values(metricsStore.webhooks.byEndpoint).forEach(stats => {
-      totalCalls += stats.calls;
-      totalSuccessful += stats.successful;
+    // Neuen Webhook-Aufruf speichern
+    await Webhook.create({
+      date: today,
+      endpoint,
+      isSuccess,
+      timestamp: new Date()
     });
-    
-    metricsStore.webhooks.successRate = totalCalls > 0 ? (totalSuccessful / totalCalls * 100).toFixed(1) : 100;
     
     // Bei Fehlern auch Fehlerstatistiken aktualisieren
     if (!isSuccess) {
-      trackError('webhook', 500, 'WebhookError');
+      await trackError('webhook', 500, 'WebhookError');
     }
     
     logger.debug('Webhook tracked', { endpoint, isSuccess });
@@ -403,10 +499,10 @@ function trackWebhook(endpoint, isSuccess) {
 }
 
 // Initialisiere die Metriken
-function initializeMonitoring() {
+async function initializeMonitoring() {
   try {
     // Initialisiere historische Daten
-    initializeHistoricalData();
+    await initializeHistoricalData();
     
     // Starte regelmäßige Aktualisierungen
     setInterval(updateSystemMetrics, 60000); // Alle 60 Sekunden
@@ -421,89 +517,261 @@ function initializeMonitoring() {
 }
 
 // Exportiere Metriken für API-Endpunkte
-function getDashboardStats() {
-  return {
-    apiCalls: {
-      total: metricsStore.apiCalls.total,
-      today: metricsStore.apiCalls.today,
-      successRate: metricsStore.apiCalls.successRate,
-      history: metricsStore.apiCalls.history
-    },
-    errors: {
-      total: metricsStore.errors.total,
-      today: metricsStore.errors.today,
-      criticalCount: metricsStore.errors.criticalCount,
-      history: metricsStore.errors.history
-    },
-    transformations: {
-      total: metricsStore.transformations.total,
-      active: metricsStore.transformations.active,
-      mostUsed: Object.keys(metricsStore.transformations.usage).reduce((a, b) => 
-        metricsStore.transformations.usage[a] > metricsStore.transformations.usage[b] ? a : b, '')
-    },
-    system: {
-      cpuUsage: metricsStore.system.cpuUsage,
-      memoryUsage: metricsStore.system.memoryUsage,
-      diskUsage: metricsStore.system.diskUsage,
-      uptime: metricsStore.system.uptime
-    },
-    recentApiCalls: metricsStore.recentApiCalls.slice(0, 5)
-  };
+async function getDashboardStats() {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // API-Aufrufe abrufen
+    const totalApiCalls = await ApiCall.aggregate([
+      { $match: { endpoint: null } },
+      { $group: { _id: null, total: { $sum: "$count" } } }
+    ]);
+    
+    const apiCallsHistory = await ApiCall.find({ endpoint: null })
+      .sort({ date: -1 })
+      .limit(7)
+      .select('date count')
+      .lean();
+    
+    // Fehler abrufen
+    const totalErrors = await Error.aggregate([
+      { $match: { endpoint: null, errorType: null } },
+      { $group: { _id: null, total: { $sum: "$count" } } }
+    ]);
+    
+    const criticalErrors = await Error.aggregate([
+      { $match: { errorType: 'CriticalError' } },
+      { $group: { _id: null, total: { $sum: "$count" } } }
+    ]);
+    
+    const errorsHistory = await Error.find({ endpoint: null, errorType: null })
+      .sort({ date: -1 })
+      .limit(7)
+      .select('date count')
+      .lean();
+    
+    // Transformationen abrufen
+    const transformationsConfig = await Config.findOne({ type: 'transformations' }).lean();
+    
+    const mostUsedTransformation = await Transformation.aggregate([
+      { $match: { type: { $ne: null } } },
+      { $group: { _id: "$type", total: { $sum: "$count" } } },
+      { $sort: { total: -1 } },
+      { $limit: 1 }
+    ]);
+    
+    // Aktuelle API-Aufrufe
+    const recentApiCalls = await ApiCall.find({ endpoint: { $ne: null }, status: { $ne: null } })
+      .sort({ timestamp: -1 })
+      .limit(5)
+      .select('timestamp endpoint status duration')
+      .lean();
+    
+    // Erfolgsrate berechnen
+    const totalCount = totalApiCalls.length > 0 ? totalApiCalls[0].total : 0;
+    const totalErrorCount = totalErrors.length > 0 ? totalErrors[0].total : 0;
+    const successRate = totalCount > 0 ? 100 - ((totalErrorCount / totalCount) * 100).toFixed(1) : 100;
+    
+    return {
+      apiCalls: {
+        total: totalCount,
+        today: currentMetrics.apiCalls.today,
+        successRate: successRate,
+        history: apiCallsHistory.map(h => ({ date: h.date, count: h.count }))
+      },
+      errors: {
+        total: totalErrorCount,
+        today: currentMetrics.errors.today,
+        criticalCount: criticalErrors.length > 0 ? criticalErrors[0].total : 0,
+        history: errorsHistory.map(h => ({ date: h.date, count: h.count }))
+      },
+      transformations: {
+        total: transformationsConfig ? transformationsConfig.count : 0,
+        active: transformationsConfig ? transformationsConfig.active : 0,
+        mostUsed: mostUsedTransformation.length > 0 ? mostUsedTransformation[0]._id : ''
+      },
+      system: {
+        cpuUsage: currentMetrics.system.cpuUsage,
+        memoryUsage: currentMetrics.system.memoryUsage,
+        diskUsage: currentMetrics.system.diskUsage,
+        uptime: currentMetrics.system.uptime
+      },
+      recentApiCalls: recentApiCalls.map(call => ({
+        timestamp: call.timestamp,
+        endpoint: call.endpoint,
+        status: call.status,
+        duration: call.duration
+      }))
+    };
+  } catch (error) {
+    logger.error('Error getting dashboard stats', { error });
+    throw error;
+  }
 }
 
-function getDetailedStats(timeRange = '7d') {
-  // Konvertiere den Zeitbereich in Tage
-  let days = 7;
-  switch (timeRange) {
-    case '1d': days = 1; break;
-    case '7d': days = 7; break;
-    case '30d': days = 30; break;
-    case '90d': days = 90; break;
-    default: days = 7;
-  }
-  
-  // Für die Demo verwenden wir unsere 7-Tage-Historie
-  // In einer echten Anwendung würden wir hier aus der Datenbank abfragen
-  
-  return {
-    apiCalls: {
-      total: metricsStore.apiCalls.total,
-      history: metricsStore.apiCalls.history,
-      byEndpoint: metricsStore.apiCalls.endpoints
-    },
-    errors: {
-      total: metricsStore.errors.total,
-      history: metricsStore.errors.history,
-      byType: metricsStore.errors.byType,
-      byEndpoint: metricsStore.errors.byEndpoint
-    },
-    transformations: {
-      total: metricsStore.transformations.total,
-      active: metricsStore.transformations.active,
-      history: metricsStore.transformations.history,
-      usage: metricsStore.transformations.usage
-    },
-    webhooks: {
-      total: metricsStore.webhooks.total,
-      active: metricsStore.webhooks.active,
-      calls: metricsStore.webhooks.calls,
-      successRate: metricsStore.webhooks.successRate,
-      byEndpoint: metricsStore.webhooks.byEndpoint
-    },
-    system: {
-      current: {
-        cpuUsage: metricsStore.system.cpuUsage,
-        memoryUsage: metricsStore.system.memoryUsage,
-        diskUsage: metricsStore.system.diskUsage,
-        uptime: metricsStore.system.uptime
-      },
-      history: {
-        cpu: metricsStore.system.history.cpu,
-        memory: metricsStore.system.history.memory,
-        disk: metricsStore.system.history.disk
-      }
+async function getDetailedStats(timeRange = '7d') {
+  try {
+    // Konvertiere den Zeitbereich in Tage
+    let days = 7;
+    switch (timeRange) {
+      case '1d': days = 1; break;
+      case '7d': days = 7; break;
+      case '30d': days = 30; break;
+      case '90d': days = 90; break;
+      default: days = 7;
     }
-  };
+    
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    
+    const startDateStr = startDate.toISOString().split('T')[0];
+    
+    // API-Aufrufe abrufen
+    const apiCallsHistory = await ApiCall.find({ 
+      endpoint: null,
+      date: { $gte: startDateStr }
+    }).sort({ date: 1 }).select('date count').lean();
+    
+    const apiCallsByEndpoint = await ApiCall.aggregate([
+      { $match: { endpoint: { $ne: null }, date: { $gte: startDateStr } } },
+      { $group: { _id: "$endpoint", total: { $sum: "$count" } } }
+    ]);
+    
+    // Fehler abrufen
+    const errorsHistory = await Error.find({ 
+      endpoint: null,
+      errorType: null,
+      date: { $gte: startDateStr }
+    }).sort({ date: 1 }).select('date count').lean();
+    
+    const errorsByType = await Error.aggregate([
+      { $match: { errorType: { $ne: null }, date: { $gte: startDateStr } } },
+      { $group: { _id: "$errorType", total: { $sum: "$count" } } }
+    ]);
+    
+    const errorsByEndpoint = await Error.aggregate([
+      { $match: { endpoint: { $ne: null }, date: { $gte: startDateStr } } },
+      { $group: { _id: "$endpoint", total: { $sum: "$count" } } }
+    ]);
+    
+    // Transformationen abrufen
+    const transformationsConfig = await Config.findOne({ type: 'transformations' }).lean();
+    
+    const transformationsHistory = await Transformation.find({ 
+      type: null,
+      date: { $gte: startDateStr }
+    }).sort({ date: 1 }).select('date count').lean();
+    
+    const transformationsUsage = await Transformation.aggregate([
+      { $match: { type: { $ne: null }, date: { $gte: startDateStr } } },
+      { $group: { _id: "$type", total: { $sum: "$count" } } }
+    ]);
+    
+    // Webhooks abrufen
+    const webhooksConfig = await Config.findOne({ type: 'webhooks' }).lean();
+    
+    const webhooksHistory = await Webhook.find({ 
+      endpoint: null,
+      date: { $gte: startDateStr }
+    }).sort({ date: 1 }).select('date count successful').lean();
+    
+    const webhooksByEndpoint = await Webhook.aggregate([
+      { $match: { endpoint: { $ne: null }, date: { $gte: startDateStr } } },
+      { $group: { 
+        _id: "$endpoint", 
+        calls: { $sum: "$count" },
+        successful: { $sum: "$successful" }
+      } }
+    ]);
+    
+    // Systemmetriken abrufen
+    const cpuHistory = await SystemMetric.find({ 
+      type: 'cpu',
+      date: { $gte: startDateStr }
+    }).sort({ date: 1 }).select('date value').lean();
+    
+    const memoryHistory = await SystemMetric.find({ 
+      type: 'memory',
+      date: { $gte: startDateStr }
+    }).sort({ date: 1 }).select('date value').lean();
+    
+    const diskHistory = await SystemMetric.find({ 
+      type: 'disk',
+      date: { $gte: startDateStr }
+    }).sort({ date: 1 }).select('date value').lean();
+    
+    // Gesamtzahlen und Erfolgsraten berechnen
+    const totalApiCalls = apiCallsHistory.reduce((sum, day) => sum + day.count, 0);
+    const totalWebhookCalls = webhooksHistory.reduce((sum, day) => sum + day.count, 0);
+    const totalWebhookSuccessful = webhooksHistory.reduce((sum, day) => sum + day.successful, 0);
+    const webhookSuccessRate = totalWebhookCalls > 0 ? (totalWebhookSuccessful / totalWebhookCalls * 100).toFixed(1) : 100;
+    
+    return {
+      apiCalls: {
+        total: totalApiCalls,
+        history: apiCallsHistory.map(h => ({ date: h.date, count: h.count })),
+        byEndpoint: apiCallsByEndpoint.reduce((obj, item) => {
+          obj[item._id] = item.total;
+          return obj;
+        }, {})
+      },
+      errors: {
+        total: errorsHistory.reduce((sum, day) => sum + day.count, 0),
+        history: errorsHistory.map(h => ({ date: h.date, count: h.count })),
+        byType: errorsByType.reduce((obj, item) => {
+          obj[item._id] = item.total;
+          return obj;
+        }, {}),
+        byEndpoint: errorsByEndpoint.reduce((obj, item) => {
+          obj[item._id] = item.total;
+          return obj;
+        }, {})
+      },
+      transformations: {
+        total: transformationsConfig ? transformationsConfig.count : 0,
+        active: transformationsConfig ? transformationsConfig.active : 0,
+        history: transformationsHistory.map(h => ({ date: h.date, count: h.count })),
+        usage: transformationsUsage.reduce((obj, item) => {
+          obj[item._id] = item.total;
+          return obj;
+        }, {})
+      },
+      webhooks: {
+        total: webhooksConfig ? webhooksConfig.count : 0,
+        active: webhooksConfig ? webhooksConfig.active : 0,
+        calls: webhooksHistory.map(h => ({ 
+          date: h.date, 
+          count: h.count, 
+          successful: h.successful 
+        })),
+        successRate: webhookSuccessRate,
+        byEndpoint: webhooksByEndpoint.reduce((obj, item) => {
+          obj[item._id] = {
+            calls: item.calls,
+            successful: item.successful
+          };
+          return obj;
+        }, {})
+      },
+      system: {
+        current: {
+          cpuUsage: currentMetrics.system.cpuUsage,
+          memoryUsage: currentMetrics.system.memoryUsage,
+          diskUsage: currentMetrics.system.diskUsage,
+          uptime: currentMetrics.system.uptime
+        },
+        history: {
+          cpu: cpuHistory.map(h => ({ date: h.date, value: h.value })),
+          memory: memoryHistory.map(h => ({ date: h.date, value: h.value })),
+          disk: diskHistory.map(h => ({ date: h.date, value: h.value }))
+        }
+      }
+    };
+  } catch (error) {
+    logger.error('Error getting detailed stats', { error });
+    throw error;
+  }
 }
 
 // API-Middleware zur Erfassung von API-Aufrufen

@@ -10,13 +10,14 @@ Eine leistungsstarke Middleware zur Integration zwischen dem SelectLine ERP-Syst
 - Datentransformation zwischen ERP- und Salesforce-Datenformaten
 - Webhook-Handler für Salesforce-Events
 - Robuste Fehlerbehandlung mit automatischen Wiederholungsversuchen
-- Umfassendes Logging und Monitoring
+- Umfassendes Logging und Monitoring mit Datenbankunterstützung
 
 ## Technischer Stack
 
 - **Backend**: Node.js mit Express
 - **Caching**: Redis
 - **Persistente Datenspeicherung**: MongoDB
+- **Monitoring**: MongoDB-basiertes Metriken-System
 - **Authentifizierung**: JWT-basiert
 
 ## Voraussetzungen
@@ -266,3 +267,27 @@ Sie können die beigefügte Postman-Sammlung importieren, um die API-Endpunkte z
 ## Lizenz
 
 Apache 2.0
+
+## Systemüberwachung und Monitoring
+
+Die Anwendung verfügt über ein umfassendes Monitoring-System, das wichtige Metriken zur Systemleistung und API-Nutzung erfasst:
+
+### Erfasste Metriken:
+
+- **API-Aufrufe**: Gesamtzahl, tägliche Aufrufe, Erfolgsrate und Verteilung nach Endpunkten
+- **Fehler**: Gesamtzahl, kritische Fehler, Fehlertypen und betroffene Endpunkte
+- **Transformationen**: Aktive Transformationen, Nutzungsstatistiken nach Typ
+- **Webhooks**: Aktive Webhooks, Erfolgsraten, Historie der Aufrufe
+- **System**: CPU-Auslastung, Speicherverbrauch, Festplattennutzung
+
+### Datenbankintegration:
+
+Alle Metriken werden in MongoDB gespeichert, wodurch eine langfristige Speicherung und Analyse ermöglicht wird. Die Implementierung verwendet folgende Mongoose-Schemas:
+
+- `ApiCall`: Speichert API-Aufruf-Metriken mit Datum, Endpunkt und Leistungsdaten
+- `Error`: Erfasst aufgetretene Fehler mit Typ und betroffenen Komponenten
+- `Transformation`: Protokolliert Transformationsaktivitäten
+- `Webhook`: Zeichnet Webhook-Aufrufe und deren Erfolg auf
+- `SystemMetric`: Speichert Systemzustandsdaten (CPU, Speicher, Festplatte)
+
+Die gespeicherten Metriken sind über das Dashboard und dedizierte API-Endpunkte für Analyse und Berichterstattung zugänglich.

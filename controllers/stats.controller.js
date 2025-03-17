@@ -10,7 +10,7 @@ const monitoringService = require('../services/monitoring.service');
 const getApiCallStats = async (req, res, next) => {
   try {
     // Detaillierte Statistiken aus dem Monitoring-Service abrufen
-    const detailedStats = monitoringService.getDetailedStats(req.query.timeRange);
+    const detailedStats = await monitoringService.getDetailedStats(req.query.timeRange);
     
     // Nur die API-Aufruf-Daten extrahieren
     const apiCallStats = {
@@ -56,7 +56,7 @@ const getApiCallStats = async (req, res, next) => {
 const getDashboardStats = async (req, res, next) => {
   try {
     // Echte Daten aus dem Monitoring-Service abrufen
-    const dashboardStats = monitoringService.getDashboardStats();
+    const dashboardStats = await monitoringService.getDashboardStats();
 
     res.status(StatusCodes.OK).json({
       status: 'success',
@@ -76,7 +76,7 @@ const getDashboardStats = async (req, res, next) => {
 const getSystemStats = async (req, res, next) => {
   try {
     // Detaillierte Statistiken aus dem Monitoring-Service abrufen
-    const detailedStats = monitoringService.getDetailedStats(req.query.timeRange);
+    const detailedStats = await monitoringService.getDetailedStats(req.query.timeRange);
     
     // Systemdaten extrahieren
     const systemStats = {
@@ -120,7 +120,7 @@ const getSystemStats = async (req, res, next) => {
 const getTransformationStats = async (req, res, next) => {
   try {
     // Detaillierte Statistiken aus dem Monitoring-Service abrufen
-    const detailedStats = monitoringService.getDetailedStats(req.query.timeRange);
+    const detailedStats = await monitoringService.getDetailedStats(req.query.timeRange);
     
     // Transformationsdaten extrahieren und formatieren
     const transformationStats = {
@@ -151,7 +151,7 @@ const getTransformationStats = async (req, res, next) => {
 const getWebhookStats = async (req, res, next) => {
   try {
     // Detaillierte Statistiken aus dem Monitoring-Service abrufen
-    const detailedStats = monitoringService.getDetailedStats(req.query.timeRange);
+    const detailedStats = await monitoringService.getDetailedStats(req.query.timeRange);
     
     // Webhook-Daten extrahieren und formatieren
     const webhookStats = {
