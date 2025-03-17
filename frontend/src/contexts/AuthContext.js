@@ -28,7 +28,15 @@ export const AuthProvider = ({ children }) => {
             // Token ist gültig, setze Axios-Header und hole Benutzerdaten
             axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
             const response = await axios.get('/api/auth/profile');
-            setUser(response.data);
+            // Prüfe die verschiedenen möglichen Strukturen des Benutzerobjekts
+            if (response.data?.data?.user) {
+              setUser(response.data);
+            } else if (response.data?.user) {
+              setUser({ data: { user: response.data.user } });
+            } else {
+              // Fallback: Setze den Benutzer direkt
+              setUser(response.data);
+            }
           }
         } catch (err) {
           console.error('Auth check error:', err);
@@ -49,6 +57,12 @@ export const AuthProvider = ({ children }) => {
       
       const response = await axios.post('/api/auth/login', { username, password });
       const { token, refreshToken, user: userData } = response.data.data;
+      // Prüfe, ob die Daten in der erwarteten Struktur vorliegen
+      let userToStore = userData;
+      if (userData && !userData.data && userData.role) {
+        // Umstrukturierung des Benutzerobjekts, wenn die Rolle direkt auf der obersten Ebene liegt
+        userToStore = { data: { user: userData } };
+      }
       
       // Token im localStorage speichern
       localStorage.setItem('token', token);
@@ -58,7 +72,7 @@ export const AuthProvider = ({ children }) => {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
       // Benutzer im State speichern
-      setUser(userData);
+      setUser(userToStore);
       
       return { success: true };
     } catch (err) {
@@ -130,7 +144,15 @@ export const AuthProvider = ({ children }) => {
 
   // Hilfsfunktion zur Prüfung, ob der Benutzer ein Admin ist
   const isAdmin = () => {
-    return user?.role === 'admin';
+    // Debug-Ausgaben, um die Benutzerstruktur zu überprüfen
+    
+    // Korrekter Zugriff auf die Rolle in der verschachtelten Struktur
+    const userRole = user?.data?.user?.role || user?.role;
+    
+    // Prüfung, ob die Rolle 'admin' ist
+    const isUserAdmin = userRole === 'admin';
+    
+    return isUserAdmin;
   };
 
   return (

@@ -93,6 +93,20 @@ export const logsApi = {
   getDatabaseLogs: (params) => api.get('/api/logs/database', { params }),
   getRedisLogs: (params) => api.get('/api/logs/redis', { params }),
   getEmailLogs: (params) => api.get('/api/logs/email', { params }),
+  getErpLogs: (params) => api.get('/api/logs/erp', { params }),
+  getMonitoringLogs: (params) => api.get('/api/logs/monitoring', { params }),
+  getLogsList: () => api.get('/api/logs/list')
+    .then(response => {
+      // Überprüfen und extrahieren der Daten aus der Antwort
+      if (response.data && response.data.status === 'success' && Array.isArray(response.data.data)) {
+        return response.data.data; // Gibt direkt das Array der Log-Dateien zurück
+      } else {
+        console.error('Unerwartetes Format der Log-Dateiliste:', response.data);
+        return [];
+      }
+    }),
+  // Universeller Log-Abruf für dynamische Log-Typen
+  getLogs: (type, params) => api.get(`/api/logs/${type}`, { params }),
 };
 
 // API-Funktionen für Statistiken

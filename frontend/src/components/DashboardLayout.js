@@ -34,6 +34,8 @@ import AssessmentIcon from '@mui/icons-material/Assessment';
 import WarningIcon from '@mui/icons-material/Warning';
 import LogoutIcon from '@mui/icons-material/Logout';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import LockIcon from '@mui/icons-material/Lock';
+import BusinessIcon from '@mui/icons-material/Business';
 
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -92,6 +94,13 @@ const DashboardLayout = () => {
   const navigate = useNavigate();
   const { user, logout, isAdmin } = useAuth();
   
+  // Hilfsfunktion, um direkt auf das korrekte Benutzerrollenfeld zuzugreifen
+  const checkAdminRole = () => {
+    // Berücksichtigt die verschiedenen möglichen Strukturen
+    const role = user?.data?.user?.role || user?.role;
+    return role === 'admin';
+  };
+  
   // State für geöffnete/geschlossene Seitenleiste
   const [open, setOpen] = useState(true);
   
@@ -145,9 +154,12 @@ const DashboardLayout = () => {
   ];
   
   const logNavItems = [
+    { text: 'Log-Viewer (Universal)', icon: <AssessmentIcon />, path: '/logs/system' },
     { text: 'Fehler-Logs', icon: <WarningIcon />, path: '/logs/error' },
     { text: 'System-Logs', icon: <AssessmentIcon />, path: '/logs/system' },
     { text: 'API-Logs', icon: <CodeIcon />, path: '/logs/api' },
+    { text: 'Auth-Logs', icon: <LockIcon />, path: '/logs/auth' },
+    { text: 'ERP-Logs', icon: <BusinessIcon />, path: '/logs/erp' },
   ];
 
   return (
@@ -171,7 +183,7 @@ const DashboardLayout = () => {
           {/* Benutzer-Menü */}
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Typography variant="body2" sx={{ mr: 2 }}>
-              {user?.fullName || user?.username}
+              {user?.data?.user?.fullName || user?.data?.user?.username || user?.fullName || user?.username || 'Benutzer'}
             </Typography>
             <Tooltip title="Kontoeinstellungen">
               <IconButton
@@ -184,7 +196,7 @@ const DashboardLayout = () => {
                 color="inherit"
               >
                 <Avatar sx={{ width: 32, height: 32, bgcolor: theme.palette.secondary.main }}>
-                  {user?.username ? user.username.charAt(0).toUpperCase() : 'U'}
+                  {(user?.data?.user?.username || user?.username) ? (user?.data?.user?.username || user?.username).charAt(0).toUpperCase() : 'U'}
                 </Avatar>
               </IconButton>
             </Tooltip>
@@ -275,7 +287,7 @@ const DashboardLayout = () => {
         </List>
         
         {/* Admin-Navigationspunkte (nur für Admins) */}
-        {isAdmin() && (
+        {checkAdminRole() && (
           <>
             <Divider />
             <List>

@@ -26,7 +26,7 @@ const ProtectedRoute = ({ allowedRoles = [] }) => {
   }
 
   // Wenn Rollen definiert sind, prüfen ob der Benutzer die richtige Rolle hat
-  if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
+  if (allowedRoles.length > 0 && !allowedRoles.includes(user.data.user.role)) {
     // Wenn der Benutzer nicht die richtige Rolle hat, zur 403-Seite weiterleiten
     return <Navigate to="/forbidden" replace />;
   }
