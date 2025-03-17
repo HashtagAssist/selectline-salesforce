@@ -1,6 +1,7 @@
 const express = require('express');
 const { authenticateJWT, authorizeRoles } = require('../middlewares/auth.middleware');
 const statsController = require('../controllers/stats.controller');
+const User = require('../models/user.model'); // Benutzermodell importieren
 
 const router = express.Router();
 
@@ -32,17 +33,58 @@ router.get('/system', authenticateJWT, statsController.getSystemStats);
  */
 router.get('/users', authenticateJWT, authorizeRoles(['admin']), async (req, res, next) => {
   try {
-    // Benutzerdaten würden in einer echten Anwendung aus der Datenbank abgerufen werden
-    // Für die Demo verwenden wir weiterhin Mock-Daten
+    // Echte Benutzerstatistiken aus der Datenbank abrufen
+    const totalUsers = await User.countDocuments();
+    const activeUsers = await User.countDocuments({ isActive: true });
+    const adminUsers = await User.countDocuments({ role: 'admin' });
+    
+    // Kürzlich registrierte Benutzer (letzte 7 Tage)
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    const recentRegistrations = await User.countDocuments({ 
+      createdAt: { $gte: oneWeekAgo } 
+    });
+    
+    // Login-Aktivität der letzten 7 Tage
+    // In einer realen Anwendung würde man ein separates Login-Log-Modell verwenden
+    // Hier simulieren wir die Aktivität basierend auf lastLogin-Timestamps
+    const loginHistory = [];
+    for (let i = 6; i >= 0; i--) {
+      const day = new Date();
+      day.setDate(day.getDate() - i);
+      day.setHours(0, 0, 0, 0);
+      
+      const nextDay = new Date(day);
+      nextDay.setDate(nextDay.getDate() + 1);
+      
+      const count = await User.countDocuments({
+        lastLogin: { $gte: day, $lt: nextDay }
+      });
+      
+      loginHistory.push(count);
+    }
+    
+    // Heute eingeloggte Benutzer
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const loginsToday = await User.countDocuments({
+      lastLogin: { $gte: today }
+    });
+    
+    // Eingeloggte Benutzer diese Woche
+    const loginsThisWeek = await User.countDocuments({
+      lastLogin: { $gte: oneWeekAgo }
+    });
+    
     const userStats = {
-      total: 24,
-      active: 21,
-      admins: 3,
-      recentRegistrations: 5,
+      total: totalUsers,
+      active: activeUsers,
+      admins: adminUsers,
+      recentRegistrations: recentRegistrations,
       loginActivity: {
-        today: 18,
-        week: 22,
-        history: [15, 18, 17, 20, 19, 21, 18]
+        today: loginsToday,
+        week: loginsThisWeek,
+        history: loginHistory
       }
     };
 

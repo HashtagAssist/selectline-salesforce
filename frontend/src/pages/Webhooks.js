@@ -98,16 +98,6 @@ const Webhooks = () => {
     }
   }, [webhooksData]);
 
-  // Fallback zu Dummy-Daten, wenn keine Daten verfügbar sind
-  useEffect(() => {
-    if (webhooks.length === 0 && !webhooksLoading) {
-      setWebhooks([
-        { id: 1, name: 'Neuer Benutzer', url: 'https://example.com/webhook1', events: 'user.created', active: true },
-        { id: 2, name: 'Daten aktualisiert', url: 'https://example.com/webhook2', events: 'data.updated', active: false },
-      ]);
-    }
-  }, [webhooksLoading, webhooks.length]);
-
   const handleOpenDialog = (webhook = null) => {
     if (webhook) {
       setCurrentWebhook(webhook);

@@ -12,6 +12,9 @@ const getApiCallStats = async (req, res, next) => {
     // Detaillierte Statistiken aus dem Monitoring-Service abrufen
     const detailedStats = await monitoringService.getDetailedStats(req.query.timeRange);
     
+    // Antwortzeiten aus dem Monitoring-Service abrufen
+    const responseTimeStats = await monitoringService.getResponseTimeStats(req.query.timeRange);
+    
     // Nur die API-Aufruf-Daten extrahieren
     const apiCallStats = {
       dailyCalls: {
@@ -22,12 +25,7 @@ const getApiCallStats = async (req, res, next) => {
         labels: Object.keys(detailedStats.apiCalls.byEndpoint),
         data: Object.values(detailedStats.apiCalls.byEndpoint)
       },
-      responseTime: {
-        average: 267, // Diese Werte könnten aus zusätzlichen Metriken kommen
-        min: 54,
-        max: 1245,
-        p95: 648
-      },
+      responseTime: responseTimeStats,
       errorRate: {
         overall: (detailedStats.errors.total / detailedStats.apiCalls.total * 100).toFixed(1),
         byEndpoint: Object.keys(detailedStats.errors.byEndpoint).reduce((acc, endpoint) => {

@@ -2212,11 +2212,11 @@ paths:
       parameters:
         - in: query
           name: timeRange
-          description: Time range for the statistics (e.g. 'day', 'week', 'month')
+          description: Time range for the statistics
           schema:
             type: string
-            enum: [day, week, month, year]
-            default: week
+            enum: [1d, 7d, 30d, 90d]
+            default: 7d
       responses:
         '200':
           description: Statistics retrieved successfully
@@ -2259,18 +2259,23 @@ paths:
                             example: [345, 456, 234, 123]
                       responseTime:
                         type: object
+                        description: Response time statistics calculated from actual database records
                         properties:
                           average:
                             type: integer
+                            description: Average response time in milliseconds
                             example: 267
                           min:
                             type: integer
+                            description: Minimum response time in milliseconds 
                             example: 54
                           max:
                             type: integer
+                            description: Maximum response time in milliseconds
                             example: 1245
                           p95:
                             type: integer
+                            description: 95th percentile response time in milliseconds
                             example: 648
                       errorRate:
                         type: object
@@ -2310,11 +2315,11 @@ paths:
       parameters:
         - in: query
           name: timeRange
-          description: Time range for the statistics (e.g. 'day', 'week', 'month')
+          description: Time range for the statistics
           schema:
             type: string
-            enum: [day, week, month, year]
-            default: day
+            enum: [1d, 7d, 30d, 90d]
+            default: 7d
       responses:
         '200':
           description: Statistics retrieved successfully
@@ -2408,7 +2413,7 @@ paths:
       tags:
         - Stats
       summary: Get user statistics
-      description: Retrieves statistics about users (admin only)
+      description: Retrieves real statistics about users from the database (admin only)
       security:
         - bearerAuth: []
       responses:
@@ -2427,18 +2432,23 @@ paths:
                     properties:
                       total:
                         type: integer
+                        description: Total number of users in the system
                         example: 24
                       active:
                         type: integer
+                        description: Number of active users in the system
                         example: 21
                       admins:
                         type: integer
+                        description: Number of admin users in the system
                         example: 3
                       recentRegistrations:
                         type: integer
+                        description: Number of users registered in the last 7 days
                         example: 5
                       loginActivity:
                         type: object
+                        description: Login activity statistics from user records
                         properties:
                           today:
                             type: integer
@@ -2481,11 +2491,11 @@ paths:
       parameters:
         - in: query
           name: timeRange
-          description: Time range for the statistics (e.g. 'day', 'week', 'month')
+          description: Time range for the statistics
           schema:
             type: string
-            enum: [day, week, month, year]
-            default: week
+            enum: [1d, 7d, 30d, 90d]
+            default: 7d
       responses:
         '200':
           description: Statistics retrieved successfully
@@ -2554,11 +2564,11 @@ paths:
       parameters:
         - in: query
           name: timeRange
-          description: Time range for the statistics (e.g. 'day', 'week', 'month')
+          description: Time range for the statistics
           schema:
             type: string
-            enum: [day, week, month, year]
-            default: week
+            enum: [1d, 7d, 30d, 90d]
+            default: 7d
       responses:
         '200':
           description: Statistics retrieved successfully

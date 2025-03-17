@@ -86,52 +86,17 @@ const Dashboard = () => {
   // Die Backend-API gibt die Daten im Format { status: 'success', data: { ... } } zurück
   const data = apiResponse?.data?.data;
 
-  // Fallback zu Platzhalter-Daten, wenn keine Daten verfügbar sind
-  const stats = data || {
-    apiCalls: {
-      total: 12543,
-      today: 243,
-      successRate: 98.7,
-      history: [
-        { date: '2023-03-08', count: 432 },
-        { date: '2023-03-09', count: 389 },
-        { date: '2023-03-10', count: 467 },
-        { date: '2023-03-11', count: 501 },
-        { date: '2023-03-12', count: 387 },
-        { date: '2023-03-13', count: 420 },
-        { date: '2023-03-14', count: 450 }
-      ]
-    },
-    errors: {
-      total: 157,
-      today: 3,
-      criticalCount: 0,
-      history: [
-        { date: '2023-03-08', count: 12 },
-        { date: '2023-03-09', count: 15 },
-        { date: '2023-03-10', count: 9 },
-        { date: '2023-03-11', count: 11 },
-        { date: '2023-03-12', count: 14 },
-        { date: '2023-03-13', count: 8 },
-        { date: '2023-03-14', count: 3 }
-      ]
-    },
-    system: {
-      cpuUsage: 32,
-      memoryUsage: 48,
-      diskUsage: 27,
-    },
-    transformations: {
-      total: 28,
-      active: 24,
-    },
-    recentApiCalls: [
-      { timestamp: new Date(), endpoint: '/api/erp/customers', status: 200, duration: 254 },
-      { timestamp: new Date(Date.now() - 120000), endpoint: '/api/erp/products', status: 200, duration: 187 },
-      { timestamp: new Date(Date.now() - 240000), endpoint: '/api/erp/orders', status: 200, duration: 312 },
-      { timestamp: new Date(Date.now() - 360000), endpoint: '/api/webhooks/trigger', status: 400, duration: 78 }
-    ]
-  };
+  // Keine Mock-Daten mehr verwenden
+  // Wenn keine Daten vom Backend kommen, zeigen wir das entsprechend an
+  if (!data) {
+    return (
+      <Alert severity="info" sx={{ m: 2 }}>
+        Keine Dashboard-Daten verfügbar. Bitte stellen Sie sicher, dass der Server läuft und Sie angemeldet sind.
+      </Alert>
+    );
+  }
+
+  const stats = data;
 
   // Daten für das API-Aufrufe-Diagramm aus echten Daten
   const apiCallsData = stats.apiCalls.history.map(item => ({

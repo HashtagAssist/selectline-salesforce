@@ -138,44 +138,7 @@ const ApiCalls = () => {
   };
   
   // Beispieldaten für die Tabelle, falls noch keine API-Integration vorhanden ist
-  const apiCalls = Array.isArray(data?.data) ? data.data : [
-    {
-      id: '1',
-      endpoint: '/api/artikel',
-      method: 'GET',
-      status: 200,
-      duration: 120,
-      timestamp: new Date().toISOString(),
-      requestHeaders: { 'Content-Type': 'application/json', 'Authorization': 'Bearer xxx' },
-      requestBody: null,
-      responseHeaders: { 'Content-Type': 'application/json' },
-      responseBody: { data: [{ id: 1, name: 'Produkt 1' }, { id: 2, name: 'Produkt 2' }] },
-    },
-    {
-      id: '2',
-      endpoint: '/api/auftraege',
-      method: 'POST',
-      status: 201,
-      duration: 350,
-      timestamp: new Date(Date.now() - 3600000).toISOString(),
-      requestHeaders: { 'Content-Type': 'application/json', 'Authorization': 'Bearer xxx' },
-      requestBody: { kundeId: 123, artikel: [{ id: 1, menge: 5 }] },
-      responseHeaders: { 'Content-Type': 'application/json' },
-      responseBody: { id: 456, status: 'erstellt' },
-    },
-    {
-      id: '3',
-      endpoint: '/api/kunden/123',
-      method: 'GET',
-      status: 404,
-      duration: 85,
-      timestamp: new Date(Date.now() - 7200000).toISOString(),
-      requestHeaders: { 'Content-Type': 'application/json', 'Authorization': 'Bearer xxx' },
-      requestBody: null,
-      responseHeaders: { 'Content-Type': 'application/json' },
-      responseBody: { error: 'Kunde nicht gefunden' },
-    },
-  ];
+  const apiCalls = Array.isArray(data?.data) ? data.data : [];
   
   const totalCalls = data?.pagination?.total || apiCalls.length;
 

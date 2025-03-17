@@ -92,6 +92,13 @@ const currentMetrics = {
 
 // Initialisieren der historischen Daten für die letzten 7 Tage
 async function initializeHistoricalData() {
+  // Diese Funktion wurde geändert, um keine Demo-Daten mehr zu erzeugen
+  // Die Datenbank bleibt leer, bis echte Daten gesammelt werden
+  logger.info('Keine historischen Demo-Daten werden erstellt. Die Datenbank beginnt leer.');
+  return;
+  
+  // Der folgende Code wurde deaktiviert
+  /*
   const now = new Date();
   const oneDay = 24 * 60 * 60 * 1000; // Millisekunden in einem Tag
   
@@ -220,6 +227,7 @@ async function initializeHistoricalData() {
   } catch (error) {
     logger.error('Fehler beim Initialisieren historischer Daten', { error });
   }
+  */
 }
 
 // Aktualisiert die aktuellen Systemmetriken
@@ -774,6 +782,80 @@ async function getDetailedStats(timeRange = '7d') {
   }
 }
 
+/**
+ * Berechnet Statistiken zu Antwortzeiten von API-Aufrufen
+ * @param {string} timeRange - Zeitbereich für die Statistiken (1d, 7d, 30d, 90d)
+ * @returns {Object} Statistiken zu Antwortzeiten
+ */
+async function getResponseTimeStats(timeRange = '7d') {
+  try {
+    // Konvertiere den Zeitbereich in Tage
+    let days = 7;
+    switch (timeRange) {
+      case '1d': days = 1; break;
+      case '7d': days = 7; break;
+      case '30d': days = 30; break;
+      case '90d': days = 90; break;
+      default: days = 7;
+    }
+    
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    
+    // API-Aufrufe mit duration-Informationen abrufen
+    const apiCalls = await ApiCall.find({
+      timestamp: { $gte: startDate, $lte: endDate },
+      duration: { $exists: true, $ne: null }
+    })
+    .select('duration')
+    .lean();
+    
+    if (apiCalls.length === 0) {
+      return {
+        average: 0,
+        min: 0,
+        max: 0,
+        p95: 0
+      };
+    }
+    
+    // Daten für Berechnungen extrahieren
+    const durations = apiCalls.map(call => call.duration).filter(d => d !== undefined);
+    
+    if (durations.length === 0) {
+      return {
+        average: 0,
+        min: 0,
+        max: 0,
+        p95: 0
+      };
+    }
+    
+    // Sortieren für Perzentilberechnung
+    durations.sort((a, b) => a - b);
+    
+    // Statistiken berechnen
+    const min = durations[0];
+    const max = durations[durations.length - 1];
+    const average = Math.round(durations.reduce((sum, val) => sum + val, 0) / durations.length);
+    
+    // 95. Perzentil berechnen
+    const p95Index = Math.ceil(durations.length * 0.95) - 1;
+    const p95 = durations[p95Index];
+    
+    return {
+      average,
+      min,
+      max,
+      p95
+    };
+  } catch (error) {
+    logger.error('Error calculating response time statistics', { error });
+    throw error;
+  }
+}
+
 // API-Middleware zur Erfassung von API-Aufrufen
 function apiMonitoringMiddleware(req, res, next) {
   const startTime = Date.now();
@@ -785,7 +867,16 @@ function apiMonitoringMiddleware(req, res, next) {
     res.end(chunk, encoding);
     
     const responseTime = Date.now() - startTime;
-    trackApiCall(req.originalUrl, res.statusCode, responseTime);
+    // trackApiCall asynchron aufrufen, aber nicht auf die Fertigstellung warten
+    // Wir verwenden eine selbstabfangende Promise, um Fehler zu loggen, ohne den Anfrage-/Antwort-Zyklus zu beeinträchtigen
+    trackApiCall(req.originalUrl, res.statusCode, responseTime)
+      .catch(err => {
+        logger.error('Fehler beim Tracking des API-Aufrufs:', { 
+          error: err.message,
+          endpoint: req.originalUrl,
+          statusCode: res.statusCode
+        });
+      });
   };
   
   next();
@@ -799,5 +890,6 @@ module.exports = {
   trackTransformation,
   trackWebhook,
   getDashboardStats,
-  getDetailedStats
+  getDetailedStats,
+  getResponseTimeStats
 }; 

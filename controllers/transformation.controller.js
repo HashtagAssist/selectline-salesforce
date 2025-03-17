@@ -479,107 +479,12 @@ const customTransformation = async (req, res, next) => {
  */
 const getTransformationsList = async (req, res, next) => {
   try {
-    // Simulierte Daten (in einer echten Anwendung würden wir diese aus einer Datenbank abrufen)
-    const transformations = [
-      {
-        id: 1,
-        name: 'Kunden nach Shopify',
-        source: 'erp',
-        target: 'shopify',
-        direction: 'erp_to_external',
-        objectType: 'customer',
-        active: true,
-        lastRun: '2023-08-15T12:30:45',
-        transformationCode: `// Beispiel-Transformation für Kunden nach Shopify
-function transform(customer) {
-  return {
-    first_name: customer.vorname,
-    last_name: customer.name,
-    email: customer.email,
-    phone: customer.telefon,
-    addresses: [
-      {
-        address1: customer.strasse,
-        city: customer.ort,
-        zip: customer.plz,
-        country_code: "DE"
-      }
-    ],
-    metafields: [
-      {
-        key: "customer_id",
-        value: customer.kundennummer,
-        namespace: "erp"
-      }
-    ]
-  };
-}`,
-      },
-      {
-        id: 2,
-        name: 'Produkte nach WooCommerce',
-        source: 'erp',
-        target: 'woocommerce',
-        direction: 'erp_to_external',
-        objectType: 'product',
-        active: true,
-        lastRun: '2023-08-14T10:15:22',
-        transformationCode: `// Beispiel-Transformation für Produkte nach WooCommerce
-function transform(product) {
-  return {
-    name: product.bezeichnung,
-    sku: product.artikelnummer,
-    regular_price: product.verkaufspreis.toString(),
-    description: product.langtext || "",
-    short_description: product.kurztext || "",
-    categories: product.warengruppen.map(wg => ({ name: wg })),
-    images: product.bilder.map(bild => ({ src: bild.url })),
-    stock_quantity: product.lagerbestand,
-    manage_stock: true,
-    weight: product.gewicht ? product.gewicht.toString() : "0"
-  };
-}`,
-      },
-      {
-        id: 3,
-        name: 'Bestellungen von Shopify',
-        source: 'shopify',
-        target: 'erp',
-        direction: 'external_to_erp',
-        objectType: 'order',
-        active: true,
-        lastRun: '2023-08-15T08:45:12',
-        transformationCode: `// Beispiel-Transformation für Bestellungen von Shopify
-function transform(order) {
-  return {
-    auftragsnummer: \`SHOP-\${order.order_number}\`,
-    kunde: {
-      kundennummer: order.customer.metafields.find(mf => mf.key === "customer_id")?.value,
-      name: order.customer.last_name,
-      vorname: order.customer.first_name,
-      email: order.customer.email
-    },
-    positionen: order.line_items.map((item, index) => ({
-      positionsnummer: index + 1,
-      artikelnummer: item.sku,
-      menge: item.quantity,
-      einzelpreis: parseFloat(item.price)
-    })),
-    zahlungsart: order.payment_method_title,
-    versandart: order.shipping_lines[0]?.method_title || "Standard",
-    lieferadresse: {
-      name: order.shipping.last_name,
-      vorname: order.shipping.first_name,
-      strasse: order.shipping.address_1,
-      plz: order.shipping.postcode,
-      ort: order.shipping.city
-    }
-  };
-}`,
-      },
-    ];
+    // Keine simulierten Daten mehr verwenden
+    // In einer echten Anwendung würden wir diese aus einer Datenbank abrufen
+    // Da wir aktuell keine Mock-Daten mehr wollen, geben wir ein leeres Array zurück
+    const transformations = [];
 
-    logger.info('Transformationsliste abgerufen');
+    logger.info('Transformationsliste abgerufen (leere Liste)');
     
     res.status(StatusCodes.OK).json({
       status: 'success',
@@ -606,57 +511,13 @@ const getTransformationById = async (req, res, next) => {
 
     const { id } = req.params;
     
-    // Simulierte Daten (in einer echten Anwendung würden wir diese aus einer Datenbank abrufen)
-    const transformations = [
-      {
-        id: 1,
-        name: 'Kunden nach Shopify',
-        source: 'erp',
-        target: 'shopify',
-        direction: 'erp_to_external',
-        objectType: 'customer',
-        active: true,
-        lastRun: '2023-08-15T12:30:45',
-        transformationCode: `// Beispiel-Transformation für Kunden nach Shopify
-function transform(customer) {
-  return {
-    first_name: customer.vorname,
-    last_name: customer.name,
-    email: customer.email,
-    phone: customer.telefon,
-    addresses: [
-      {
-        address1: customer.strasse,
-        city: customer.ort,
-        zip: customer.plz,
-        country_code: "DE"
-      }
-    ],
-    metafields: [
-      {
-        key: "customer_id",
-        value: customer.kundennummer,
-        namespace: "erp"
-      }
-    ]
-  };
-}`,
-      },
-      // Weitere Transformationen...
-    ];
+    // Keine simulierten Daten mehr verwenden
+    // In einer echten Anwendung würden wir diese aus einer Datenbank abrufen
+    // Da wir aktuell keine Mock-Daten mehr wollen, geben wir einen 404-Fehler zurück
     
-    const transformation = transformations.find(t => t.id === parseInt(id, 10));
+    logger.info(`Transformation ${id} nicht gefunden`);
     
-    if (!transformation) {
-      throw new NotFoundError(`Transformation mit ID ${id} nicht gefunden`);
-    }
-    
-    logger.info(`Transformation ${id} abgerufen`);
-    
-    res.status(StatusCodes.OK).json({
-      status: 'success',
-      data: transformation
-    });
+    throw new NotFoundError(`Transformation mit ID ${id} nicht gefunden`);
   } catch (error) {
     logger.error(`Fehler beim Abrufen der Transformation ${req.params.id}:`, error);
     next(error);
@@ -678,28 +539,13 @@ const createTransformation = async (req, res, next) => {
 
     const { name, source, target, direction, objectType, active, transformationCode } = req.body;
     
-    // Simulieren einer neuen Transformation-ID (in einer echten Anwendung würde diese von der Datenbank generiert)
-    const newId = 4;
+    // Keine simulierten Daten mehr verwenden
+    // In einer echten Anwendung würde hier die Erstellung einer neuen Transformation in der Datenbank erfolgen
+    logger.info('Anfrage zur Erstellung einer neuen Transformation erhalten, aber Funktion ist noch nicht vollständig implementiert');
     
-    const newTransformation = {
-      id: newId,
-      name,
-      source,
-      target,
-      direction,
-      objectType,
-      active: active !== undefined ? active : true,
-      transformationCode,
-      lastRun: null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    
-    logger.info(`Neue Transformation erstellt: ${name}`);
-    
-    res.status(StatusCodes.CREATED).json({
-      status: 'success',
-      data: newTransformation
+    return res.status(StatusCodes.NOT_IMPLEMENTED).json({
+      status: 'error',
+      message: 'Die Erstellung neuer Transformationen ist noch nicht implementiert'
     });
   } catch (error) {
     logger.error('Fehler beim Erstellen einer neuen Transformation:', error);
@@ -723,46 +569,15 @@ const updateTransformation = async (req, res, next) => {
     const { id } = req.params;
     const { name, source, target, direction, objectType, active, transformationCode } = req.body;
     
-    // Simulierte Daten (in einer echten Anwendung würden wir diese aus einer Datenbank abrufen)
-    const transformations = [
-      {
-        id: 1,
-        name: 'Kunden nach Shopify',
-        source: 'erp',
-        target: 'shopify',
-        direction: 'erp_to_external',
-        objectType: 'customer',
-        active: true,
-        lastRun: '2023-08-15T12:30:45',
-        transformationCode: '// Beispiel-Transformation...',
-      },
-      // Weitere Transformationen...
-    ];
+    // Keine simulierten Daten mehr verwenden
+    // In einer echten Anwendung würden wir die Transformation aus einer Datenbank abrufen
+    // Da wir aktuell keine Mock-Daten mehr wollen, geben wir einen 404-Fehler zurück
     
-    const transformationIndex = transformations.findIndex(t => t.id === parseInt(id, 10));
+    logger.error(`Transformation mit ID ${id} nicht gefunden (keine Mock-Daten mehr)`);
+    throw new NotFoundError(`Transformation mit ID ${id} nicht gefunden`);
     
-    if (transformationIndex === -1) {
-      throw new NotFoundError(`Transformation mit ID ${id} nicht gefunden`);
-    }
-    
-    const updatedTransformation = {
-      ...transformations[transformationIndex],
-      name,
-      source,
-      target,
-      direction,
-      objectType,
-      active: active !== undefined ? active : transformations[transformationIndex].active,
-      transformationCode,
-      updatedAt: new Date().toISOString()
-    };
-    
-    logger.info(`Transformation ${id} aktualisiert`);
-    
-    res.status(StatusCodes.OK).json({
-      status: 'success',
-      data: updatedTransformation
-    });
+    // Der Rest dieser Funktion wird nicht mehr erreicht, da wir immer einen Fehler werfen
+    // In einer echten Implementierung würde hier die Transformation aktualisiert werden
   } catch (error) {
     logger.error(`Fehler beim Aktualisieren der Transformation ${req.params.id}:`, error);
     next(error);
@@ -784,12 +599,13 @@ const deleteTransformation = async (req, res, next) => {
 
     const { id } = req.params;
     
-    // Simulieren einer Löschaktion (in einer echten Anwendung würden wir die Datenbankeinträge löschen)
-    logger.info(`Transformation ${id} gelöscht`);
+    // Keine simulierten Daten mehr verwenden
+    // In einer echten Anwendung würde hier die Löschung einer Transformation in der Datenbank erfolgen
+    logger.info(`Anfrage zum Löschen der Transformation ${id} erhalten, aber Funktion ist noch nicht vollständig implementiert`);
     
-    res.status(StatusCodes.OK).json({
-      status: 'success',
-      message: `Transformation mit ID ${id} erfolgreich gelöscht`
+    return res.status(StatusCodes.NOT_IMPLEMENTED).json({
+      status: 'error',
+      message: `Das Löschen von Transformationen ist noch nicht implementiert`
     });
   } catch (error) {
     logger.error(`Fehler beim Löschen der Transformation ${req.params.id}:`, error);

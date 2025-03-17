@@ -84,104 +84,9 @@ const Transformations = () => {
   // Fallback, wenn keine Daten vorhanden sind (für die lokale Entwicklung)
   useEffect(() => {
     if (transformations.length === 0 && !transformationsLoading) {
-      setTransformations([
-        {
-          id: 1,
-          name: 'Kunden nach Shopify',
-          source: 'erp',
-          target: 'shopify',
-          direction: 'erp_to_external',
-          objectType: 'customer',
-          active: true,
-          lastRun: '2023-08-15T12:30:45',
-          transformationCode: `// Beispiel-Transformation für Kunden nach Shopify
-function transform(customer) {
-  return {
-    first_name: customer.vorname,
-    last_name: customer.name,
-    email: customer.email,
-    phone: customer.telefon,
-    addresses: [
-      {
-        address1: customer.strasse,
-        city: customer.ort,
-        zip: customer.plz,
-        country_code: "DE"
-      }
-    ],
-    metafields: [
-      {
-        key: "customer_id",
-        value: customer.kundennummer,
-        namespace: "erp"
-      }
-    ]
-  };
-}`,
-        },
-        {
-          id: 2,
-          name: 'Produkte nach WooCommerce',
-          source: 'erp',
-          target: 'woocommerce',
-          direction: 'erp_to_external',
-          objectType: 'product',
-          active: true,
-          lastRun: '2023-08-14T10:15:22',
-          transformationCode: `// Beispiel-Transformation für Produkte nach WooCommerce
-function transform(product) {
-  return {
-    name: product.bezeichnung,
-    sku: product.artikelnummer,
-    regular_price: product.verkaufspreis.toString(),
-    description: product.langtext || "",
-    short_description: product.kurztext || "",
-    categories: product.warengruppen.map(wg => ({ name: wg })),
-    images: product.bilder.map(bild => ({ src: bild.url })),
-    stock_quantity: product.lagerbestand,
-    manage_stock: true,
-    weight: product.gewicht ? product.gewicht.toString() : "0"
-  };
-}`,
-        },
-        {
-          id: 3,
-          name: 'Bestellungen von Shopify',
-          source: 'shopify',
-          target: 'erp',
-          direction: 'external_to_erp',
-          objectType: 'order',
-          active: true,
-          lastRun: '2023-08-15T08:45:12',
-          transformationCode: `// Beispiel-Transformation für Bestellungen von Shopify
-function transform(order) {
-  return {
-    auftragsnummer: \`SHOP-\${order.order_number}\`,
-    kunde: {
-      kundennummer: order.customer.metafields.find(mf => mf.key === "customer_id")?.value,
-      name: order.customer.last_name,
-      vorname: order.customer.first_name,
-      email: order.customer.email
-    },
-    positionen: order.line_items.map((item, index) => ({
-      positionsnummer: index + 1,
-      artikelnummer: item.sku,
-      menge: item.quantity,
-      einzelpreis: parseFloat(item.price)
-    })),
-    zahlungsart: order.payment_method_title,
-    versandart: order.shipping_lines[0]?.method_title || "Standard",
-    lieferadresse: {
-      name: order.shipping.last_name,
-      vorname: order.shipping.first_name,
-      strasse: order.shipping.address_1,
-      plz: order.shipping.postcode,
-      ort: order.shipping.city
-    }
-  };
-}`,
-        },
-      ]);
+      // Keine Mock-Daten mehr verwenden
+      setTransformations([]);
+      console.log("Keine Transformationen gefunden");
     }
   }, [transformationsLoading, transformations.length]);
   
@@ -213,48 +118,7 @@ function transform(order) {
   });
   
   // State für Ausführungsprotokoll
-  const [executionLogs, setExecutionLogs] = useState([
-    {
-      id: 1,
-      transformationId: 1,
-      transformationName: 'Kunden nach Shopify',
-      timestamp: '2023-08-15T12:30:45',
-      status: 'success',
-      objectsProcessed: 25,
-      objectsSucceeded: 25,
-      objectsFailed: 0,
-      duration: 3.2,
-      details: []
-    },
-    {
-      id: 2,
-      transformationId: 2,
-      transformationName: 'Produkte nach WooCommerce',
-      timestamp: '2023-08-14T10:15:22',
-      status: 'partial',
-      objectsProcessed: 150,
-      objectsSucceeded: 147,
-      objectsFailed: 3,
-      duration: 12.8,
-      details: [
-        { objectId: '12345', error: 'Ungültige Produktkategorie' },
-        { objectId: '23456', error: 'Preis darf nicht negativ sein' },
-        { objectId: '34567', error: 'Bild-URL nicht erreichbar' }
-      ]
-    },
-    {
-      id: 3,
-      transformationId: 3,
-      transformationName: 'Bestellungen von Shopify',
-      timestamp: '2023-08-15T08:45:12',
-      status: 'success',
-      objectsProcessed: 5,
-      objectsSucceeded: 5,
-      objectsFailed: 0,
-      duration: 1.5,
-      details: []
-    },
-  ]);
+  const [executionLogs, setExecutionLogs] = useState([]);
   
   // Systeme und Objekttypen für Dropdown-Menüs
   const systems = [

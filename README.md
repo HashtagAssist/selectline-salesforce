@@ -206,11 +206,13 @@ npm start
 ### Statistiken
 
 - `GET /api/stats/dashboard` - Allgemeine Statistiken für das Dashboard abrufen
-- `GET /api/stats/api-calls` - Detaillierte Statistiken zu API-Aufrufen abrufen
-- `GET /api/stats/system` - Systemstatistiken (CPU, Speicher, Festplatte) abrufen
-- `GET /api/stats/users` - Benutzerstatistiken abrufen (nur für Admins)
-- `GET /api/stats/transformations` - Statistiken zu Datentransformationen abrufen
-- `GET /api/stats/webhooks` - Statistiken zu Webhooks abrufen
+- `GET /api/stats/api-calls?timeRange=7d` - Detaillierte Statistiken zu API-Aufrufen abrufen. Unterstützt die Zeitbereiche 1d, 7d, 30d und 90d.
+- `GET /api/stats/system?timeRange=7d` - Systemstatistiken (CPU, Speicher, Festplatte) abrufen. Unterstützt die Zeitbereiche 1d, 7d, 30d und 90d.
+- `GET /api/stats/users` - Benutzerstatistiken aus der Datenbank abrufen (nur für Admins)
+- `GET /api/stats/transformations?timeRange=7d` - Statistiken zu Datentransformationen abrufen. Unterstützt die Zeitbereiche 1d, 7d, 30d und 90d.
+- `GET /api/stats/webhooks?timeRange=7d` - Statistiken zu Webhooks abrufen. Unterstützt die Zeitbereiche 1d, 7d, 30d und 90d.
+
+Alle Statistik-Endpunkte nutzen reale Daten aus der MongoDB-Datenbank. Die Antwortzeiten und Fehlerraten werden anhand tatsächlicher API-Aufrufe berechnet. Benutzerstatistiken werden direkt aus dem Benutzermodell abgeleitet.
 
 ## Fehlerbehebung
 
@@ -289,5 +291,13 @@ Alle Metriken werden in MongoDB gespeichert, wodurch eine langfristige Speicheru
 - `Transformation`: Protokolliert Transformationsaktivitäten
 - `Webhook`: Zeichnet Webhook-Aufrufe und deren Erfolg auf
 - `SystemMetric`: Speichert Systemzustandsdaten (CPU, Speicher, Festplatte)
+- `Config`: Speichert Konfigurationsdaten für verschiedene Metrik-Typen
 
-Die gespeicherten Metriken sind über das Dashboard und dedizierte API-Endpunkte für Analyse und Berichterstattung zugänglich.
+Die gespeicherten Metriken sind über das Dashboard und dedizierte API-Endpunkte für Analyse und Berichterstattung zugänglich. Die Antwortzeiten für API-Aufrufe werden aus tatsächlichen Daten berechnet, einschließlich:
+
+- Durchschnittliche Antwortzeit in Millisekunden
+- Minimale Antwortzeit 
+- Maximale Antwortzeit
+- 95. Perzentil der Antwortzeit
+
+Alle Statistiken können nach verschiedenen Zeitbereichen (1 Tag, 7 Tage, 30 Tage, 90 Tage) gefiltert werden.

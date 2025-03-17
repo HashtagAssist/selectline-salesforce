@@ -483,15 +483,11 @@ const handleCustomEvent = async (req, res, next) => {
  */
 const getWebhookList = async (req, res, next) => {
   try {
-    // Simulierte Daten (in einer echten Anwendung würden wir diese aus einer Datenbank abrufen)
-    const webhooks = [
-      { id: 1, name: 'Neuer Benutzer', url: 'https://example.com/webhook1', events: 'user.created', active: true },
-      { id: 2, name: 'Daten aktualisiert', url: 'https://example.com/webhook2', events: 'data.updated', active: false },
-      { id: 3, name: 'Bestellung eingegangen', url: 'https://example.com/webhook3', events: 'order.created', active: true },
-      { id: 4, name: 'Produkt erstellt', url: 'https://example.com/webhook4', events: 'product.created', active: true },
-    ];
+    // Echte Webhook-Daten würden hier aus der Datenbank abgerufen werden
+    // Da wir aktuell keine Mock-Daten mehr wollen, geben wir ein leeres Array zurück
+    const webhooks = [];
 
-    logger.info('Webhook-Liste abgerufen');
+    logger.info('Webhook-Liste abgerufen (leere Liste)');
     
     res.status(StatusCodes.OK).json({
       status: 'success',
@@ -511,6 +507,7 @@ const getWebhookList = async (req, res, next) => {
  */
 const getWebhookById = async (req, res, next) => {
   try {
+    // Validierung der Eingabedaten
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       throw new ValidationError('Validierungsfehler', errors.array());
@@ -518,26 +515,15 @@ const getWebhookById = async (req, res, next) => {
 
     const { id } = req.params;
     
-    // Simulierte Daten (in einer echten Anwendung würden wir diese aus einer Datenbank abrufen)
-    const webhooks = [
-      { id: 1, name: 'Neuer Benutzer', url: 'https://example.com/webhook1', events: 'user.created', active: true },
-      { id: 2, name: 'Daten aktualisiert', url: 'https://example.com/webhook2', events: 'data.updated', active: false },
-    ];
+    // Keine simulierten Daten mehr verwenden
+    // In einer echten Anwendung würden wir diese aus einer Datenbank abrufen
+    // Da wir aktuell keine Mock-Daten mehr wollen, geben wir einen 404-Fehler zurück
     
-    const webhook = webhooks.find(w => w.id === parseInt(id, 10));
+    logger.info(`Webhook ${id} nicht gefunden`);
     
-    if (!webhook) {
-      return res.status(StatusCodes.NOT_FOUND).json({
-        status: 'error',
-        message: `Webhook mit ID ${id} nicht gefunden`
-      });
-    }
-    
-    logger.info(`Webhook ${id} abgerufen`);
-    
-    res.status(StatusCodes.OK).json({
-      status: 'success',
-      data: webhook
+    return res.status(StatusCodes.NOT_FOUND).json({
+      status: 'error',
+      message: `Webhook mit ID ${id} nicht gefunden`
     });
   } catch (error) {
     logger.error(`Fehler beim Abrufen des Webhooks ${req.params.id}:`, error);
@@ -601,35 +587,15 @@ const updateWebhook = async (req, res, next) => {
     const { id } = req.params;
     const { name, url, events, active } = req.body;
     
-    // Simulierte Daten (in einer echten Anwendung würden wir diese aus einer Datenbank abrufen)
-    const webhooks = [
-      { id: 1, name: 'Neuer Benutzer', url: 'https://example.com/webhook1', events: 'user.created', active: true },
-      { id: 2, name: 'Daten aktualisiert', url: 'https://example.com/webhook2', events: 'data.updated', active: false },
-    ];
+    // Keine simulierten Daten mehr verwenden
+    // In einer echten Anwendung würden wir diese aus einer Datenbank abrufen
+    // Da wir aktuell keine Mock-Daten mehr wollen, geben wir einen 404-Fehler zurück
     
-    const webhookIndex = webhooks.findIndex(w => w.id === parseInt(id, 10));
+    logger.info(`Webhook ${id} nicht gefunden`);
     
-    if (webhookIndex === -1) {
-      return res.status(StatusCodes.NOT_FOUND).json({
-        status: 'error',
-        message: `Webhook mit ID ${id} nicht gefunden`
-      });
-    }
-    
-    const updatedWebhook = {
-      ...webhooks[webhookIndex],
-      name,
-      url,
-      events,
-      active: active !== undefined ? active : webhooks[webhookIndex].active,
-      updatedAt: new Date().toISOString()
-    };
-    
-    logger.info(`Webhook ${id} aktualisiert`);
-    
-    res.status(StatusCodes.OK).json({
-      status: 'success',
-      data: updatedWebhook
+    return res.status(StatusCodes.NOT_FOUND).json({
+      status: 'error',
+      message: `Webhook mit ID ${id} nicht gefunden`
     });
   } catch (error) {
     logger.error(`Fehler beim Aktualisieren des Webhooks ${req.params.id}:`, error);
@@ -680,31 +646,12 @@ const getWebhookLogs = async (req, res, next) => {
 
     const { id } = req.params;
     
-    // Simulierte Log-Daten (in einer echten Anwendung würden wir diese aus einer Datenbank abrufen)
-    const logs = [
-      {
-        id: 1,
-        webhookId: parseInt(id, 10),
-        timestamp: new Date(Date.now() - 3600000).toISOString(),
-        status: 'success',
-        statusCode: 200,
-        requestBody: JSON.stringify({ event: 'user.created', data: { id: 123, name: 'Max Mustermann' } }),
-        responseBody: JSON.stringify({ success: true }),
-        duration: 120
-      },
-      {
-        id: 2,
-        webhookId: parseInt(id, 10),
-        timestamp: new Date(Date.now() - 7200000).toISOString(),
-        status: 'error',
-        statusCode: 500,
-        requestBody: JSON.stringify({ event: 'user.created', data: { id: 124, name: 'Erika Musterfrau' } }),
-        responseBody: JSON.stringify({ error: 'Internal Server Error' }),
-        duration: 350
-      }
-    ];
+    // Keine simulierten Daten mehr verwenden
+    // In einer echten Anwendung würden wir diese aus einer Datenbank abrufen
+    // Da wir aktuell keine Mock-Daten mehr wollen, geben wir ein leeres Array zurück
+    const logs = [];
     
-    logger.info(`Webhook-Logs für Webhook ${id} abgerufen`);
+    logger.info(`Webhook-Logs für Webhook ${id} abgerufen (leere Liste)`);
     
     res.status(StatusCodes.OK).json({
       status: 'success',
