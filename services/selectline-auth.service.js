@@ -1,15 +1,24 @@
 const axios = require('axios');
 const winston = require('winston');
+const https = require('https');
 
 class SelectLineAuthService {
   constructor() {
     this.token = null;
     this.baseUrl = process.env.SELECTLINE_API_URL;
     this.credentials = {
-      username: process.env.SELECTLINE_USERNAME,
-      password: process.env.SELECTLINE_PASSWORD,
-      // Any other required credentials
+      UserName: process.env.SELECTLINE_USERNAME,
+      Password: process.env.SELECTLINE_PASSWORD,
+      AppKey: process.env.SELECTLINE_APPKEY,
     };
+
+    // Axios-Instance mit SSL-Konfiguration für selbstsignierte Zertifikate
+    this.axiosInstance = axios.create({
+      httpsAgent: new https.Agent({
+        rejectUnauthorized: false // Deaktiviert die SSL-Zertifikatsprüfung
+      })
+    });
+
     this.logger = winston.createLogger({
       level: 'info',
       format: winston.format.combine(
@@ -28,8 +37,8 @@ class SelectLineAuthService {
    */
   async login() {
     try {
-      const response = await axios.post(`${this.baseUrl}/login`, this.credentials);
-      this.token = response.data.token; // Assuming token is in response data
+      const response = await this.axiosInstance.post(`${this.baseUrl}/login`, this.credentials);
+      this.token = response.data.AccessToken;
       this.logger.info('Successfully logged in to SelectLine API');
       return this.token;
     } catch (error) {
@@ -60,7 +69,10 @@ class SelectLineAuthService {
       baseURL: this.baseUrl,
       headers: {
         'Authorization': `LoginId ${token}`
-      }
+      },
+      httpsAgent: new https.Agent({
+        rejectUnauthorized: false // Deaktiviert die SSL-Zertifikatsprüfung
+      })
     });
   }
 

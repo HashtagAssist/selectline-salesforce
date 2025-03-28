@@ -1,7 +1,7 @@
 ---
 description: 
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 # API-Routen und Swagger-Dokumentation
 
@@ -30,6 +30,9 @@ Bei der Entwicklung von API-Routen sind folgende Regeln zu beachten:
 4. **Konsistenz**:
    - Die Dokumentation sollte konsistent sein mit der tatsächlichen Implementierung
    - Statuscode-Verwendung, Fehlermeldungen und Datenstrukturen sollten einheitlich sein
+5. **Style**:
+   - Verwende im frontend Material-UI (MUI) Komponenten.
+
 
 ## Betroffene Dateien
 

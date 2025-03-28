@@ -38,6 +38,7 @@ const transformationRoutes = require('./routes/transformation.routes');
 const webhookRoutes = require('./routes/webhook.routes');
 const statsRoutes = require('./routes/stats.routes');
 const logsRoutes = require('./routes/logs.routes');
+const settingsRoutes = require('./routes/settingsRoutes');
 
 // Express App initialisieren
 const app = express();
@@ -102,6 +103,7 @@ app.use('/api/transform', transformationRoutes);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/logs', logsRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // 404-Handler
 app.use((req, res) => {

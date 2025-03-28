@@ -27,6 +27,8 @@ tags:
     description: Webhook handling operations
   - name: Stats
     description: Statistics and monitoring operations
+  - name: Settings
+    description: System settings management operations
 
 components:
   securitySchemes:
@@ -580,6 +582,76 @@ components:
           type: string
           format: password
           example: "newSecurePassword123"
+
+    Settings:
+      type: object
+      properties:
+        general:
+          type: object
+          properties:
+            appName:
+              type: string
+              example: "SFSL Sync"
+            defaultLanguage:
+              type: string
+              example: "de"
+            timezone:
+              type: string
+              example: "Europe/Berlin"
+            enableNotifications:
+              type: boolean
+              example: true
+        api:
+          type: object
+          properties:
+            baseUrl:
+              type: string
+              example: "https://api.example.com"
+            timeout:
+              type: number
+              example: 30000
+            retryAttempts:
+              type: number
+              example: 3
+            maxConcurrentRequests:
+              type: number
+              example: 10
+        email:
+          type: object
+          properties:
+            smtpServer:
+              type: string
+              example: "smtp.example.com"
+            smtpPort:
+              type: number
+              example: 587
+            smtpUser:
+              type: string
+              example: "user@example.com"
+            smtpPassword:
+              type: string
+              example: ""
+            senderEmail:
+              type: string
+              example: "noreply@example.com"
+            enableEmailNotifications:
+              type: boolean
+              example: true
+        security:
+          type: object
+          properties:
+            sessionTimeout:
+              type: number
+              example: 60
+            requireMfa:
+              type: boolean
+              example: false
+            allowedIPs:
+              type: string
+              example: ""
+            maxLoginAttempts:
+              type: number
+              example: 5
 
 security:
   - bearerAuth: []
@@ -2635,6 +2707,111 @@ paths:
                 $ref: '#/components/schemas/Error'
         '500':
           description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /settings:
+    get:
+      tags:
+        - Settings
+      summary: Alle Systemeinstellungen abrufen
+      description: Ruft alle aktuellen Systemeinstellungen ab
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Einstellungen erfolgreich abgerufen
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Settings'
+        '401':
+          description: Nicht authentifiziert
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server-Fehler
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    put:
+      tags:
+        - Settings
+      summary: Systemeinstellungen aktualisieren
+      description: Aktualisiert die Systemeinstellungen
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Settings'
+      responses:
+        '200':
+          description: Einstellungen erfolgreich aktualisiert
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Settings'
+        '400':
+          description: Ungültige Eingabedaten
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '401':
+          description: Nicht authentifiziert
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server-Fehler
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /erp/token:
+    get:
+      tags:
+        - ERP
+      summary: SelectLine Token abrufen
+      description: Holt einen neuen Token vom SelectLine ERP-System
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Token erfolgreich abgerufen
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      token:
+                        type: string
+                        example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        '401':
+          description: Nicht authentifiziert
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Serverfehler
           content:
             application/json:
               schema:

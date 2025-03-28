@@ -183,6 +183,7 @@ npm start
 - `GET /api/erp/belege/:id` - Einen bestimmten Beleg abrufen
 - `GET /api/erp/auftraege` - Aufträge aus dem ERP-System abrufen
 - `GET /api/erp/auftraege/:id` - Einen bestimmten Auftrag abrufen
+- `GET /api/erp/token` - Einen neuen Token vom SelectLine ERP-System abrufen
 - `POST /api/erp/cache-refresh` - Cache für ERP-Daten aktualisieren
 
 ### Datentransformation
@@ -211,6 +212,17 @@ npm start
 - `GET /api/stats/users` - Benutzerstatistiken aus der Datenbank abrufen (nur für Admins)
 - `GET /api/stats/transformations?timeRange=7d` - Statistiken zu Datentransformationen abrufen. Unterstützt die Zeitbereiche 1d, 7d, 30d und 90d.
 - `GET /api/stats/webhooks?timeRange=7d` - Statistiken zu Webhooks abrufen. Unterstützt die Zeitbereiche 1d, 7d, 30d und 90d.
+
+### Einstellungen
+
+- `GET /api/settings` - Alle Systemeinstellungen abrufen
+- `PUT /api/settings` - Systemeinstellungen aktualisieren
+
+Die Einstellungen umfassen:
+- Allgemeine Einstellungen (App-Name, Sprache, Zeitzone, Benachrichtigungen)
+- API-Einstellungen (Basis-URL, Timeout, Wiederholungsversuche)
+- E-Mail-Einstellungen (SMTP-Konfiguration, Benachrichtigungen)
+- Sicherheitseinstellungen (Session-Timeout, MFA, IP-Beschränkungen)
 
 Alle Statistik-Endpunkte nutzen reale Daten aus der MongoDB-Datenbank. Die Antwortzeiten und Fehlerraten werden anhand tatsächlicher API-Aufrufe berechnet. Benutzerstatistiken werden direkt aus dem Benutzermodell abgeleitet.
 

@@ -369,6 +369,44 @@ const refreshCache = async (req, res, next) => {
   }
 };
 
+/**
+ * Get a new token from SelectLine
+ */
+const getSelectLineToken = async (req, res, next) => {
+  try {
+    const token = await selectLineService.login();
+    res.json({
+      status: 'success',
+      data: {
+        token
+      }
+    });
+  } catch (error) {
+    // Detailliertes Error-Logging
+    logger.error('Error getting SelectLine token', { 
+      error: error.message,
+      stack: error.stack,
+      response: error.response?.data, // SelectLine API Antwort
+      status: error.response?.status,
+      headers: error.response?.headers
+    });
+
+    // Fehlerantwort basierend auf dem API-Fehler
+    const statusCode = error.response?.status || StatusCodes.INTERNAL_SERVER_ERROR;
+    const errorMessage = error.response?.data?.message || 'Fehler beim Abrufen des SelectLine Tokens';
+    
+    res.status(statusCode).json({
+      status: 'error',
+      message: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? {
+        apiError: error.response?.data,
+        errorCode: error.code,
+        request: error
+      } : undefined
+    });
+  }
+};
+
 // Export all functions
 module.exports = {
   getKunden,
@@ -379,5 +417,6 @@ module.exports = {
   getBelegById,
   getAuftraege,
   getAuftragById,
-  refreshCache
+  refreshCache,
+  getSelectLineToken
 }; 
