@@ -407,6 +407,33 @@ const getSelectLineToken = async (req, res, next) => {
   }
 };
 
+/**
+ * Logout von SelectLine
+ */
+const logoutSelectLine = async (req, res, next) => {
+  try {
+    await selectLineService.logout().then(response => {
+      res.status(StatusCodes.ACCEPTED).json({
+        status: 'success',
+        message: 'Erfolgreich von SelectLine abgemeldet',
+        slMessage: response
+      });
+    }).catch(error => {
+      res.status(StatusCodes.BAD_REQUEST).json({
+        status: 'error',
+        message: 'Fehler beim Abmelden von SelectLine'
+      });
+    });
+  } catch (error) {
+    logger.error('Error logging out from SelectLine', { 
+      error: error.message,
+      stack: error.stack,
+      response: error.response?.data
+    });
+    next(error);
+  }
+};
+
 // Export all functions
 module.exports = {
   getKunden,
@@ -418,5 +445,6 @@ module.exports = {
   getAuftraege,
   getAuftragById,
   refreshCache,
-  getSelectLineToken
+  getSelectLineToken,
+  logoutSelectLine
 }; 

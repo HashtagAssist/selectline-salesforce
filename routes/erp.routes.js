@@ -209,4 +209,11 @@ router.post(
  */
 router.get('/token', erpController.getSelectLineToken);
 
+/**
+ * @route   POST /api/erp/logout
+ * @desc    Logout von SelectLine ERP
+ * @access  Privat
+ */
+router.post('/logout', authenticateJWT, erpController.logoutSelectLine);
+
 module.exports = router; 

@@ -61,6 +61,20 @@ class SelectLineAuthService {
     }
   }
 
+  async getOldToken() {
+      // Versuche Token aus der Datenbank zu holen
+      const tokenDoc = await SelectLineToken.findOne()
+        .sort({ createdAt: -1 })
+        .exec();
+
+      if (tokenDoc) {
+        this.logger.debug('Using existing token from database');
+        return tokenDoc.token;
+      }
+      // Wenn kein Token in der DB, hole einen neuen
+   
+  }
+
   /**
    * Login to the SelectLine API and store token in DB
    */
@@ -84,6 +98,63 @@ class SelectLineAuthService {
     }
   }
   
+  /**
+   * Logout from SelectLine API and remove token from DB
+   */
+  async logout() {
+    try {
+      // Hole den aktuellen Token
+      const token = await this.getOldToken();
+      
+      // Erstelle einen neuen Client mit dem Token
+      const client = axios.create({
+        baseURL: this.baseUrl,
+        headers: {
+          'Authorization': `LoginId ${token}`
+        },
+        httpsAgent: new https.Agent({
+          rejectUnauthorized: false
+        })
+      });
+
+      // Sende Logout-Request an SelectLine API
+      const response = await client.post('/logout')
+      
+      // Prüfe ob Logout erfolgreich war (Status 204)
+      if (response.status === 204) {
+        // Lösche Token aus der Datenbank
+        await SelectLineToken.deleteMany({});
+        this.logger.info('Successfully logged out from SelectLine API and removed token');
+        return {token:token, message:'Erfolgreich von SelectLine abgemeldet'};
+      }
+      
+      
+      throw new Error('Unerwarteter Status Code beim Logout');
+    } catch (error) {
+      if (error.response.status === 403) {
+        // Lösche Token aus der Datenbank
+        await SelectLineToken.deleteMany({});
+        this.logger.info('Successfully logged out from SelectLine API and removed token');
+        return true;
+      }else{
+        this.logger.error('Fehler beim Logout von SelectLine API', { 
+          error: error.message,
+          stack: error.stack,
+          apiError: error.response?.data,        // API Fehlermeldung
+          apiStatus: error.response?.status,     // HTTP Status Code
+          apiHeaders: error.response?.headers,   // Response Headers
+        apiRequest: {                          // Request Details
+          url: error.config?.url,
+          method: error.config?.method,
+          headers: error.config?.headers
+        }
+      });
+
+        throw new Error(JSON.stringify(error.response?.data));
+      }
+
+    }
+  }
 
   /**
    * Creates a configured axios client with the auth header set
@@ -120,7 +191,7 @@ class SelectLineAuthService {
         this.logger.warn('SelectLine token expired, performing new login');
         
         // Reset token and login again
-        await this.login();
+        //await this.login();
         
         // Retry the request
         const client = await this.getClient();
@@ -148,6 +219,7 @@ class SelectLineAuthService {
   async delete(url) {
     return this.request('DELETE', url);
   }
+
 }
 
 // Export a singleton instance
