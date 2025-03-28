@@ -374,7 +374,7 @@ const refreshCache = async (req, res, next) => {
  */
 const getSelectLineToken = async (req, res, next) => {
   try {
-    const token = await selectLineService.login();
+    const token = await selectLineService.getToken();
     res.json({
       status: 'success',
       data: {

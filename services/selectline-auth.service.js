@@ -1,21 +1,24 @@
 const axios = require('axios');
 const winston = require('winston');
 const https = require('https');
+const SelectLineToken = require('../models/selectline-token.model');
+require('dotenv').config();
 
 class SelectLineAuthService {
   constructor() {
-    this.token = null;
     this.baseUrl = process.env.SELECTLINE_API_URL;
     this.credentials = {
       UserName: process.env.SELECTLINE_USERNAME,
       Password: process.env.SELECTLINE_PASSWORD,
       AppKey: process.env.SELECTLINE_APPKEY,
     };
+    
+   
 
-    // Axios-Instance mit SSL-Konfiguration für selbstsignierte Zertifikate
     this.axiosInstance = axios.create({
+      baseURL: this.baseUrl,
       httpsAgent: new https.Agent({
-        rejectUnauthorized: false // Deaktiviert die SSL-Zertifikatsprüfung
+        rejectUnauthorized: false
       })
     });
 
@@ -33,32 +36,54 @@ class SelectLineAuthService {
   }
 
   /**
-   * Login to the SelectLine API
+   * Returns the current token from DB or gets a new one
    */
-  async login() {
+  async getToken() {
     try {
-      const response = await this.axiosInstance.post(`${this.baseUrl}/login`, this.credentials);
-      this.token = response.data.AccessToken;
-      this.logger.info('Successfully logged in to SelectLine API');
-      return this.token;
+      // Versuche Token aus der Datenbank zu holen
+      const tokenDoc = await SelectLineToken.findOne()
+        .sort({ createdAt: -1 })
+        .exec();
+
+      if (tokenDoc) {
+        this.logger.debug('Using existing token from database');
+        return tokenDoc.token;
+      }
+
+      // Wenn kein Token in der DB, hole einen neuen
+      return await this.login();
     } catch (error) {
-      this.logger.error('Error logging in to SelectLine API', { 
+      this.logger.error('Error getting token', { 
         error: error.message,
-        stack: error.stack
+        stack: error.stack 
       });
       throw error;
     }
   }
 
   /**
-   * Returns the current token or gets a new one
+   * Login to the SelectLine API and store token in DB
    */
-  async getToken() {
-    if (!this.token) {
-      return await this.login();
+  async login() {
+    try {
+      const response = await this.axiosInstance.post(`${this.baseUrl}/login`, this.credentials);
+      const token = response.data.AccessToken;
+
+      // Speichere den neuen Token in der Datenbank
+      await SelectLineToken.create({ token });
+
+      this.logger.info('Successfully logged in to SelectLine API and stored token');
+      return token;
+    } catch (error) {
+      this.logger.error('Error logging in to SelectLine API', { 
+        error: error.message,
+        stack: error.stack,
+        response: error.response?.data
+      });
+      throw error;
     }
-    return this.token;
   }
+  
 
   /**
    * Creates a configured axios client with the auth header set
@@ -71,7 +96,7 @@ class SelectLineAuthService {
         'Authorization': `LoginId ${token}`
       },
       httpsAgent: new https.Agent({
-        rejectUnauthorized: false // Deaktiviert die SSL-Zertifikatsprüfung
+        rejectUnauthorized: false
       })
     });
   }
@@ -95,7 +120,6 @@ class SelectLineAuthService {
         this.logger.warn('SelectLine token expired, performing new login');
         
         // Reset token and login again
-        this.token = null;
         await this.login();
         
         // Retry the request
