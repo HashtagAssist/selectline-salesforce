@@ -194,10 +194,10 @@ const startServer = async () => {
       // Alle verfügbaren IP-Adressen sammeln
       Object.keys(networkInterfaces).forEach(interfaceName => {
         const interfaces = networkInterfaces[interfaceName];
-        interfaces.forEach(interface => {
+        interfaces.forEach(iface => {
           // IPv4-Adressen filtern, die keine interne Loopback-Adresse sind
-          if (interface.family === 'IPv4' && !interface.internal) {
-            addresses.push(interface.address);
+          if (iface.family === 'IPv4' && !iface.internal) {
+            addresses.push(iface.address);
           }
         });
       });

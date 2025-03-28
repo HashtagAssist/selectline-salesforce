@@ -2,10 +2,10 @@
   "name": "erp-salesforce-middleware",
   "version": "1.0.0",
   "description": "Middleware zur Integration zwischen SelectLine ERP und Salesforce",
-  "main": "server.js",
+  "main": "dist/server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
+    "start": "node dist/server.js",
+    "dev": "nodemon src/server.js",
     "test": "jest",
     "show-token": "node scripts/show-token.js",
     "build": "npm run clean && npm run build:js",
