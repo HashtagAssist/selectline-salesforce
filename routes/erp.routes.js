@@ -202,4 +202,11 @@ router.post(
   erpController.refreshCache
 );
 
+/**
+ * @route   GET /api/erp/token
+ * @desc    Holt einen neuen Token vom SelectLine ERP
+ * @access  Privat
+ */
+router.get('/token', erpController.getSelectLineToken);
+
 module.exports = router; 

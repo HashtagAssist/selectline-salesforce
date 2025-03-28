@@ -1,43 +1,20 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { toast } from 'react-toastify';
 import {
-  Box,
-  Typography,
+  Container,
   Paper,
-  Tabs,
-  Tab,
-  TextField,
-  Button,
+  Typography,
   Grid,
-  Switch,
+  TextField,
   FormControlLabel,
-  Divider,
-  Alert,
-  Snackbar
+  Checkbox,
+  Button,
+  Box,
+  Divider
 } from '@mui/material';
-import SaveIcon from '@mui/icons-material/Save';
-
-const TabPanel = (props) => {
-  const { children, value, index, ...other } = props;
-
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`settings-tabpanel-${index}`}
-      aria-labelledby={`settings-tab-${index}`}
-      {...other}
-    >
-      {value === index && (
-        <Box p={3}>
-          {children}
-        </Box>
-      )}
-    </div>
-  );
-};
 
 const Settings = () => {
-  const [tabValue, setTabValue] = useState(0);
   const [settings, setSettings] = useState({
     general: {
       appName: 'SFSL Sync',
@@ -66,380 +43,278 @@ const Settings = () => {
       maxLoginAttempts: 5
     }
   });
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: '',
-    severity: 'success'
-  });
+
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Hier würden Sie Ihre Einstellungen vom Server laden
-    // Beispiel:
-    // const fetchSettings = async () => {
-    //   try {
-    //     const response = await api.getSettings();
-    //     setSettings(response.data);
-    //   } catch (error) {
-    //     console.error('Fehler beim Laden der Einstellungen:', error);
-    //   }
-    // };
-    // fetchSettings();
+    loadSettings();
   }, []);
 
-  const handleTabChange = (event, newValue) => {
-    setTabValue(newValue);
+  const loadSettings = async () => {
+    try {
+      const response = await axios.get('/api/settings');
+      setSettings(response.data);
+      setLoading(false);
+    } catch (error) {
+      toast.error('Fehler beim Laden der Einstellungen');
+      setLoading(false);
+    }
   };
 
-  const handleInputChange = (category, field, value) => {
+  const handleChange = (section, field, value) => {
     setSettings(prev => ({
       ...prev,
-      [category]: {
-        ...prev[category],
+      [section]: {
+        ...prev[section],
         [field]: value
       }
     }));
   };
 
-  const handleSaveSettings = (category) => {
-    // Hier würden Sie die Einstellungen an den Server senden
-    // Beispiel:
-    // const saveSettings = async () => {
-    //   try {
-    //     await api.updateSettings(category, settings[category]);
-    //     setSnackbar({
-    //       open: true,
-    //       message: 'Einstellungen erfolgreich gespeichert',
-    //       severity: 'success'
-    //     });
-    //   } catch (error) {
-    //     console.error('Fehler beim Speichern der Einstellungen:', error);
-    //     setSnackbar({
-    //       open: true,
-    //       message: 'Fehler beim Speichern der Einstellungen',
-    //       severity: 'error'
-    //     });
-    //   }
-    // };
-    // saveSettings();
-
-    // Dummy-Implementierung
-    console.log('Gespeicherte Einstellungen:', category, settings[category]);
-    setSnackbar({
-      open: true,
-      message: 'Einstellungen erfolgreich gespeichert',
-      severity: 'success'
-    });
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.put('/api/settings', settings);
+      toast.success('Einstellungen erfolgreich gespeichert');
+    } catch (error) {
+      toast.error('Fehler beim Speichern der Einstellungen');
+    }
   };
 
-  const handleCloseSnackbar = () => {
-    setSnackbar(prev => ({ ...prev, open: false }));
-  };
+  if (loading) {
+    return <Box sx={{ p: 3 }}>Lade Einstellungen...</Box>;
+  }
 
   return (
-    <Box p={3}>
-      <Typography variant="h4" mb={3}>Einstellungen</Typography>
-      
-      <Paper sx={{ width: '100%' }}>
-        <Tabs 
-          value={tabValue} 
-          onChange={handleTabChange} 
-          indicatorColor="primary"
-          textColor="primary"
-          variant="scrollable"
-          scrollButtons="auto"
-        >
-          <Tab label="Allgemein" id="settings-tab-0" />
-          <Tab label="API" id="settings-tab-1" />
-          <Tab label="E-Mail" id="settings-tab-2" />
-          <Tab label="Sicherheit" id="settings-tab-3" />
-        </Tabs>
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Paper elevation={3} sx={{ p: 3 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Einstellungen
+        </Typography>
+        
+        <form onSubmit={handleSubmit}>
+          {/* Allgemeine Einstellungen */}
+          <Box sx={{ mb: 4 }}>
+            <Typography variant="h6" gutterBottom>
+              Allgemeine Einstellungen
+            </Typography>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="App-Name"
+                  value={settings.general.appName}
+                  onChange={(e) => handleChange('general', 'appName', e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  select
+                  label="Standardsprache"
+                  value={settings.general.defaultLanguage}
+                  onChange={(e) => handleChange('general', 'defaultLanguage', e.target.value)}
+                >
+                  <option value="de">Deutsch</option>
+                  <option value="en">English</option>
+                </TextField>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Zeitzone"
+                  value={settings.general.timezone}
+                  onChange={(e) => handleChange('general', 'timezone', e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={settings.general.enableNotifications}
+                      onChange={(e) => handleChange('general', 'enableNotifications', e.target.checked)}
+                    />
+                  }
+                  label="Benachrichtigungen aktivieren"
+                />
+              </Grid>
+            </Grid>
+          </Box>
 
-        {/* Allgemeine Einstellungen */}
-        <TabPanel value={tabValue} index={0}>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom>Allgemeine Einstellungen</Typography>
-              <Divider sx={{ mb: 2 }} />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Anwendungsname"
-                value={settings.general.appName}
-                onChange={(e) => handleInputChange('general', 'appName', e.target.value)}
-                variant="outlined"
-                margin="normal"
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Standardsprache"
-                value={settings.general.defaultLanguage}
-                onChange={(e) => handleInputChange('general', 'defaultLanguage', e.target.value)}
-                variant="outlined"
-                margin="normal"
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Zeitzone"
-                value={settings.general.timezone}
-                onChange={(e) => handleInputChange('general', 'timezone', e.target.value)}
-                variant="outlined"
-                margin="normal"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={settings.general.enableNotifications}
-                    onChange={(e) => handleInputChange('general', 'enableNotifications', e.target.checked)}
-                    color="primary"
-                  />
-                }
-                label="Benachrichtigungen aktivieren"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Button 
-                variant="contained" 
-                color="primary" 
-                startIcon={<SaveIcon />}
-                onClick={() => handleSaveSettings('general')}
-              >
-                Speichern
-              </Button>
-            </Grid>
-          </Grid>
-        </TabPanel>
+          <Divider sx={{ my: 4 }} />
 
-        {/* API-Einstellungen */}
-        <TabPanel value={tabValue} index={1}>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom>API-Einstellungen</Typography>
-              <Divider sx={{ mb: 2 }} />
+          {/* API Einstellungen */}
+          <Box sx={{ mb: 4 }}>
+            <Typography variant="h6" gutterBottom>
+              API Einstellungen
+            </Typography>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Basis-URL"
+                  value={settings.api.baseUrl}
+                  onChange={(e) => handleChange('api', 'baseUrl', e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Timeout (ms)"
+                  value={settings.api.timeout}
+                  onChange={(e) => handleChange('api', 'timeout', parseInt(e.target.value))}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Wiederholungsversuche"
+                  value={settings.api.retryAttempts}
+                  onChange={(e) => handleChange('api', 'retryAttempts', parseInt(e.target.value))}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Max. gleichzeitige Anfragen"
+                  value={settings.api.maxConcurrentRequests}
+                  onChange={(e) => handleChange('api', 'maxConcurrentRequests', parseInt(e.target.value))}
+                />
+              </Grid>
             </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="API-Basis-URL"
-                value={settings.api.baseUrl}
-                onChange={(e) => handleInputChange('api', 'baseUrl', e.target.value)}
-                variant="outlined"
-                margin="normal"
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Timeout (ms)"
-                type="number"
-                value={settings.api.timeout}
-                onChange={(e) => handleInputChange('api', 'timeout', parseInt(e.target.value))}
-                variant="outlined"
-                margin="normal"
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Wiederholungsversuche"
-                type="number"
-                value={settings.api.retryAttempts}
-                onChange={(e) => handleInputChange('api', 'retryAttempts', parseInt(e.target.value))}
-                variant="outlined"
-                margin="normal"
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Maximale gleichzeitige Anfragen"
-                type="number"
-                value={settings.api.maxConcurrentRequests}
-                onChange={(e) => handleInputChange('api', 'maxConcurrentRequests', parseInt(e.target.value))}
-                variant="outlined"
-                margin="normal"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Button 
-                variant="contained" 
-                color="primary" 
-                startIcon={<SaveIcon />}
-                onClick={() => handleSaveSettings('api')}
-              >
-                Speichern
-              </Button>
-            </Grid>
-          </Grid>
-        </TabPanel>
+          </Box>
 
-        {/* E-Mail-Einstellungen */}
-        <TabPanel value={tabValue} index={2}>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom>E-Mail-Einstellungen</Typography>
-              <Divider sx={{ mb: 2 }} />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="SMTP-Server"
-                value={settings.email.smtpServer}
-                onChange={(e) => handleInputChange('email', 'smtpServer', e.target.value)}
-                variant="outlined"
-                margin="normal"
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="SMTP-Port"
-                type="number"
-                value={settings.email.smtpPort}
-                onChange={(e) => handleInputChange('email', 'smtpPort', parseInt(e.target.value))}
-                variant="outlined"
-                margin="normal"
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="SMTP-Benutzer"
-                value={settings.email.smtpUser}
-                onChange={(e) => handleInputChange('email', 'smtpUser', e.target.value)}
-                variant="outlined"
-                margin="normal"
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="SMTP-Passwort"
-                type="password"
-                value={settings.email.smtpPassword}
-                onChange={(e) => handleInputChange('email', 'smtpPassword', e.target.value)}
-                variant="outlined"
-                margin="normal"
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Absender-E-Mail"
-                value={settings.email.senderEmail}
-                onChange={(e) => handleInputChange('email', 'senderEmail', e.target.value)}
-                variant="outlined"
-                margin="normal"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={settings.email.enableEmailNotifications}
-                    onChange={(e) => handleInputChange('email', 'enableEmailNotifications', e.target.checked)}
-                    color="primary"
-                  />
-                }
-                label="E-Mail-Benachrichtigungen aktivieren"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Button 
-                variant="contained" 
-                color="primary" 
-                startIcon={<SaveIcon />}
-                onClick={() => handleSaveSettings('email')}
-              >
-                Speichern
-              </Button>
-            </Grid>
-          </Grid>
-        </TabPanel>
+          <Divider sx={{ my: 4 }} />
 
-        {/* Sicherheitseinstellungen */}
-        <TabPanel value={tabValue} index={3}>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom>Sicherheitseinstellungen</Typography>
-              <Divider sx={{ mb: 2 }} />
+          {/* E-Mail Einstellungen */}
+          <Box sx={{ mb: 4 }}>
+            <Typography variant="h6" gutterBottom>
+              E-Mail Einstellungen
+            </Typography>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="SMTP Server"
+                  value={settings.email.smtpServer}
+                  onChange={(e) => handleChange('email', 'smtpServer', e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="SMTP Port"
+                  value={settings.email.smtpPort}
+                  onChange={(e) => handleChange('email', 'smtpPort', parseInt(e.target.value))}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="SMTP Benutzer"
+                  value={settings.email.smtpUser}
+                  onChange={(e) => handleChange('email', 'smtpUser', e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  type="password"
+                  label="SMTP Passwort"
+                  value={settings.email.smtpPassword}
+                  onChange={(e) => handleChange('email', 'smtpPassword', e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  type="email"
+                  label="Absender E-Mail"
+                  value={settings.email.senderEmail}
+                  onChange={(e) => handleChange('email', 'senderEmail', e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={settings.email.enableEmailNotifications}
+                      onChange={(e) => handleChange('email', 'enableEmailNotifications', e.target.checked)}
+                    />
+                  }
+                  label="E-Mail Benachrichtigungen aktivieren"
+                />
+              </Grid>
             </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Sitzungstimeout (Minuten)"
-                type="number"
-                value={settings.security.sessionTimeout}
-                onChange={(e) => handleInputChange('security', 'sessionTimeout', parseInt(e.target.value))}
-                variant="outlined"
-                margin="normal"
-              />
+          </Box>
+
+          <Divider sx={{ my: 4 }} />
+
+          {/* Sicherheitseinstellungen */}
+          <Box sx={{ mb: 4 }}>
+            <Typography variant="h6" gutterBottom>
+              Sicherheitseinstellungen
+            </Typography>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Session Timeout (Minuten)"
+                  value={settings.security.sessionTimeout}
+                  onChange={(e) => handleChange('security', 'sessionTimeout', parseInt(e.target.value))}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={settings.security.requireMfa}
+                      onChange={(e) => handleChange('security', 'requireMfa', e.target.checked)}
+                    />
+                  }
+                  label="MFA erforderlich"
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Erlaubte IPs"
+                  value={settings.security.allowedIPs}
+                  onChange={(e) => handleChange('security', 'allowedIPs', e.target.value)}
+                  placeholder="IPs durch Komma getrennt"
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Max. Login-Versuche"
+                  value={settings.security.maxLoginAttempts}
+                  onChange={(e) => handleChange('security', 'maxLoginAttempts', parseInt(e.target.value))}
+                />
+              </Grid>
             </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Maximale Anmeldeversuche"
-                type="number"
-                value={settings.security.maxLoginAttempts}
-                onChange={(e) => handleInputChange('security', 'maxLoginAttempts', parseInt(e.target.value))}
-                variant="outlined"
-                margin="normal"
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Erlaubte IP-Adressen (durch Komma getrennt)"
-                value={settings.security.allowedIPs}
-                onChange={(e) => handleInputChange('security', 'allowedIPs', e.target.value)}
-                variant="outlined"
-                margin="normal"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={settings.security.requireMfa}
-                    onChange={(e) => handleInputChange('security', 'requireMfa', e.target.checked)}
-                    color="primary"
-                  />
-                }
-                label="Multi-Faktor-Authentifizierung erforderlich"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Button 
-                variant="contained" 
-                color="primary" 
-                startIcon={<SaveIcon />}
-                onClick={() => handleSaveSettings('security')}
-              >
-                Speichern
-              </Button>
-            </Grid>
-          </Grid>
-        </TabPanel>
+          </Box>
+
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              size="large"
+            >
+              Einstellungen speichern
+            </Button>
+          </Box>
+        </form>
       </Paper>
-
-      <Snackbar 
-        open={snackbar.open} 
-        autoHideDuration={6000} 
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Box>
+    </Container>
   );
 };
 
-export default Settings; 
+export default Settings;
