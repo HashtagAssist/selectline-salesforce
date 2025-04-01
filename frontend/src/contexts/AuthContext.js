@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import axios from 'axios';
 import jwtDecode from 'jwt-decode';
+import api from '../services/api';
 
 // Auth Context erstellen
 const AuthContext = createContext();
@@ -25,9 +25,8 @@ export const AuthProvider = ({ children }) => {
             // Token ist abgelaufen, Logout durchführen
             logout();
           } else {
-            // Token ist gültig, setze Axios-Header und hole Benutzerdaten
-            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-            const response = await axios.get('/api/auth/profile');
+            // Token ist gültig, hole Benutzerdaten
+            const response = await api.get('/api/auth/profile');
             // Prüfe die verschiedenen möglichen Strukturen des Benutzerobjekts
             if (response.data?.data?.user) {
               setUser(response.data);
@@ -49,14 +48,14 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
-  // Login-Funktion (geändert, um username statt email zu verwenden)
+  // Login-Funktion
   const login = async (username, password) => {
     try {
       setIsLoading(true);
       setError(null);
       
-      const response = await axios.post('/api/auth/login', { username, password });
-      const { token, refreshToken, user: userData } = response.data.data;
+      const response = await api.post('/api/auth/login', { username, password });
+      const { token, refreshToken, user: userData } = response.data;
       // Prüfe, ob die Daten in der erwarteten Struktur vorliegen
       let userToStore = userData;
       if (userData && !userData.data && userData.role) {
@@ -67,9 +66,6 @@ export const AuthProvider = ({ children }) => {
       // Token im localStorage speichern
       localStorage.setItem('token', token);
       localStorage.setItem('refreshToken', refreshToken);
-      
-      // Axios-Header für zukünftige Anfragen setzen
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
       // Benutzer im State speichern
       setUser(userToStore);
@@ -89,7 +85,7 @@ export const AuthProvider = ({ children }) => {
     try {
       // Wenn der Benutzer angemeldet ist, senden wir eine Logout-Anfrage
       if (user) {
-        await axios.post('/api/auth/logout');
+        await api.post('/api/auth/logout');
       }
     } catch (err) {
       console.error('Logout error:', err);
@@ -97,9 +93,6 @@ export const AuthProvider = ({ children }) => {
       // Token aus localStorage entfernen
       localStorage.removeItem('token');
       localStorage.removeItem('refreshToken');
-      
-      // Axios-Header zurücksetzen
-      delete axios.defaults.headers.common['Authorization'];
       
       // Benutzer aus State entfernen
       setUser(null);
@@ -112,7 +105,7 @@ export const AuthProvider = ({ children }) => {
       setIsLoading(true);
       setError(null);
       
-      await axios.post('/api/auth/register', userData);
+      await api.post('/api/auth/register', userData);
       
       return { success: true };
     } catch (err) {
@@ -130,7 +123,7 @@ export const AuthProvider = ({ children }) => {
       setIsLoading(true);
       setError(null);
       
-      await axios.post('/api/auth/password-reset', { email });
+      await api.post('/api/auth/password-reset', { email });
       
       return { success: true };
     } catch (err) {

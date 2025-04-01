@@ -107,8 +107,28 @@ install_mongodb_linux() {
     
     # MongoDB-Pakete installieren
     apt-get install -y mongodb-org
-    
-    # MongoDB-Service starten und aktivieren
+
+    # Service-Datei erstellen
+    cat > /etc/systemd/system/mongod.service <<EOF
+[Unit]
+Description=MongoDB Database Server
+Documentation=https://docs.mongodb.org/manual
+After=network.target
+
+[Service]
+User=mongodb
+Group=mongodb
+ExecStart=/usr/bin/mongod --config /etc/mongod.conf
+PIDFile=/var/run/mongodb/mongod.pid
+RuntimeDirectory=mongodb
+RuntimeDirectoryMode=0755
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    # Systemd neu laden und MongoDB starten
+    systemctl daemon-reload
     systemctl start mongod
     systemctl enable mongod
     
