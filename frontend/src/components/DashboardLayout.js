@@ -142,24 +142,19 @@ const DashboardLayout = () => {
   // Navigationselemente für die Seitenleiste
   const mainNavItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-    { text: 'API-Aufrufe', icon: <CodeIcon />, path: '/api-calls' },
-    { text: 'Transformationen', icon: <TransformIcon />, path: '/transformations' },
-    { text: 'Webhooks', icon: <StorageIcon />, path: '/webhooks' },
+    // { text: 'API-Aufrufe', icon: <CodeIcon />, path: '/api-calls' },
+    // { text: 'Transformationen', icon: <TransformIcon />, path: '/transformations' },
+    // { text: 'Webhooks', icon: <StorageIcon />, path: '/webhooks' },
     { text: 'Statistiken', icon: <AssessmentIcon />, path: '/statistics' },
   ];
   
   const adminNavItems = [
     { text: 'Benutzerverwaltung', icon: <PeopleIcon />, path: '/users' },
-    { text: 'Systemeinstellungen', icon: <SettingsIcon />, path: '/settings' },
+    // { text: 'Systemeinstellungen', icon: <SettingsIcon />, path: '/settings' },
   ];
   
   const logNavItems = [
-    { text: 'Log-Viewer (Universal)', icon: <AssessmentIcon />, path: '/logs/system' },
-    { text: 'Fehler-Logs', icon: <WarningIcon />, path: '/logs/error' },
-    { text: 'System-Logs', icon: <AssessmentIcon />, path: '/logs/system' },
-    { text: 'API-Logs', icon: <CodeIcon />, path: '/logs/api' },
-    { text: 'Auth-Logs', icon: <LockIcon />, path: '/logs/auth' },
-    { text: 'ERP-Logs', icon: <BusinessIcon />, path: '/logs/erp' },
+    { text: 'Log-Viewer (Universal)', icon: <AssessmentIcon />, path: '/logs/auth' },
   ];
 
   return (

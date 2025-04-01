@@ -13,7 +13,7 @@ const logger = winston.createLogger({
   ),
   transports: [
     new winston.transports.Console(),
-    new winston.transports.File({ filename: 'logs/erp-controller.log' })
+    new winston.transports.File({ filename: 'logs/erp.log' })
   ]
 });
 
@@ -419,6 +419,11 @@ const logoutSelectLine = async (req, res, next) => {
         slMessage: response
       });
     }).catch(error => {
+      logger.error('Error logging out from SelectLine', { 
+      error: error.message,
+      stack: error.stack,
+      response: error.response?.data
+    });
       res.status(StatusCodes.BAD_REQUEST).json({
         status: 'error',
         message: 'Fehler beim Abmelden von SelectLine'

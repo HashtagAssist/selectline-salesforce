@@ -2,7 +2,9 @@ import axios from 'axios';
 
 // Basis-URL für API-Anfragen
 const API_URL = process.env.REACT_APP_API_URL || '';
-
+if (!API_URL) {
+  console.error('REACT_APP_API_URL ist nicht definiert!');
+}
 // Instanz von Axios mit Standardkonfiguration
 const api = axios.create({
   baseURL: API_URL,
@@ -40,7 +42,7 @@ api.interceptors.response.use(
 
 // API-Funktionen für die Authentifizierung
 export const authApi = {
-  login: (email, password) => api.post('/api/auth/login', { email, password }),
+  login: (username, password) => api.post('/api/auth/login', { username, password }),
   register: (userData) => api.post('/api/auth/register', userData),
   getProfile: () => api.get('/api/auth/me'),
   resetPasswordRequest: (email) => api.post('/api/auth/reset-password-request', { email }),

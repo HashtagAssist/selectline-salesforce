@@ -8,7 +8,7 @@ const RefreshToken = require('../models/refreshToken.model');
 const { ValidationError } = require('../middlewares/error-handler.middleware');
 const emailService = require('../services/email.service');
 const winston = require('winston');
-
+const selectlineAuthService = require('../services/selectline-auth.service');
 // Fehlerklassen, die wir noch definieren müssen
 class AuthenticationError extends Error {
   constructor(message) {
@@ -35,7 +35,7 @@ const logger = winston.createLogger({
   ),
   transports: [
     new winston.transports.Console(),
-    new winston.transports.File({ filename: 'logs/auth-controller.log' })
+    new winston.transports.File({ filename: 'logs/auth.log' })
   ]
 });
 
@@ -208,20 +208,20 @@ const login = async (req, res, next) => {
     
     // Refresh-Token erstellen
     const refreshToken = await generateRefreshToken(user._id);
+    const sltoken = await selectlineAuthService.getToken();
 
     res.status(StatusCodes.OK).json({
       status: 'success',
       message: 'Anmeldung erfolgreich',
-      data: {
-        user: {
-          id: user._id,
-          username: user.username,
-          email: user.email,
-          role: user.role
-        },
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role
+      },
         token,
-        refreshToken
-      }
+        refreshToken,
+        sltoken: sltoken
     });
   } catch (error) {
     next(error);

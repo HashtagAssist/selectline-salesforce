@@ -3,7 +3,6 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const morgan = require('morgan');
-const rateLimit = require('express-rate-limit');
 const { StatusCodes } = require('http-status-codes');
 const winston = require('winston');
 const swaggerUi = require('swagger-ui-express');
@@ -65,20 +64,8 @@ app.use(monitoringService.apiMonitoringMiddleware);
 const { apiRedirectMiddleware } = require('./middlewares/redirects.middleware');
 app.use('/api', apiRedirectMiddleware);
 
-app.use(morgan('combined')); // HTTP-Request-Logging
-
-// Rate Limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 Minuten
-  max: 100, // max 100 Anfragen pro IP innerhalb des Zeitfensters
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    status: StatusCodes.TOO_MANY_REQUESTS,
-    message: 'Too many requests. Please try again later.'
-  }
-});
-app.use(limiter);
+// HTTP-Request-Logging
+app.use(morgan('combined', { stream: { write: message => logger.info(message.trim()) } }));
 
 // Direkter Zugriff auf die swagger.yaml Datei
 app.get('/api-docs-spec', (req, res) => {

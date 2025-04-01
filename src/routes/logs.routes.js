@@ -324,17 +324,97 @@ router.get('/monitoring', authenticateJWT, async (req, res, next) => {
  * @desc    Listet alle verfügbaren Log-Dateien
  * @access  Privat
  */
-router.get('/list', authenticateJWT, async (req, res, next) => {
+router.get('/list', authenticateJWT, authorizeRoles(['admin']), async (req, res) => {
   try {
     const files = await fs.readdir(LOG_DIR);
     const logFiles = files.filter(file => file.endsWith('.log'));
     
+    // Prüfe für jede Log-Datei, ob sie nicht leer ist
+    const validLogFiles = [];
+    for (const file of logFiles) {
+      const filePath = path.join(LOG_DIR, file);
+      const stats = await fs.stat(filePath);
+      if (stats.size > 0) {
+        validLogFiles.push(file);
+      }
+    }
+    
     res.status(StatusCodes.OK).json({
       status: 'success',
-      data: logFiles
+      data: validLogFiles
     });
   } catch (error) {
-    next(error);
+    console.error('Fehler beim Abrufen der Log-Dateien:', error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      status: 'error',
+      message: 'Fehler beim Abrufen der Log-Dateien'
+    });
+  }
+});
+
+/**
+ * @route   GET /api/logs/:type
+ * @desc    Liefert Logs für einen bestimmten Typ
+ * @access  Privat
+ */
+router.get('/:type', authenticateJWT, authorizeRoles(['admin']), async (req, res) => {
+  try {
+    const { type } = req.params;
+    const { page = 1, limit = 25, startDate, endDate, level, search } = req.query;
+    
+    // Mapping von Log-Typen zu Dateinamen
+    const logTypeMapping = {
+      'combined': 'combined.log',
+      'error': 'error.log',
+      'auth': 'auth.log',
+      'database': 'database.log',
+      'redis': 'redis.log',
+      'email-service': 'email-service.log',
+      'erp': 'erp.log',
+      'monitoring': 'monitoring.log',
+      'selectline': 'selectline.log',
+      'validation-errors': 'validation-errors.log',
+      'webhook-controller': 'webhook-controller.log',
+      'auth-controller': 'auth-controller.log',
+      'transformation-controller': 'transformation-controller.log',
+      'erp-controller': 'erp-controller.log',
+      'salesforce': 'salesforce.log'
+    };
+    
+    const filename = logTypeMapping[type];
+    if (!filename) {
+      return res.status(StatusCodes.NOT_FOUND).json({
+        status: 'error',
+        message: 'Ungültiger Log-Typ'
+      });
+    }
+    
+    const filePath = path.join(LOG_DIR, filename);
+    const result = await readLogFile(filePath, {
+      page,
+      limit,
+      startDate,
+      endDate,
+      level,
+      search
+    });
+    
+    res.status(StatusCodes.OK).json({
+      status: 'success',
+      pagination: {
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        pages: result.pages
+      },
+      data: result.logs
+    });
+  } catch (error) {
+    console.error(`Fehler beim Abrufen der Logs für ${req.params.type}:`, error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      status: 'error',
+      message: 'Fehler beim Abrufen der Logs'
+    });
   }
 });
 

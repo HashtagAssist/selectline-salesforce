@@ -30,7 +30,7 @@ class SelectLineAuthService {
       ),
       transports: [
         new winston.transports.Console(),
-        new winston.transports.File({ filename: 'logs/selectline.log' })
+        new winston.transports.File({ filename: 'logs/erp.log' })
       ]
     });
   }
@@ -85,11 +85,10 @@ class SelectLineAuthService {
 
       // Speichere den neuen Token in der Datenbank
       await SelectLineToken.create({ token });
-
-      this.logger.info('Successfully logged in to SelectLine API and stored token');
+      this.logger.info('LOGIN: Successfully logged in to SelectLine API and stored token. TOKEN: ' + token);
       return token;
     } catch (error) {
-      this.logger.error('Error logging in to SelectLine API', { 
+      this.logger.error('LOGIN: Error logging in to SelectLine API', { 
         error: error.message,
         stack: error.stack,
         response: error.response?.data
@@ -124,7 +123,7 @@ class SelectLineAuthService {
       if (response.status === 204) {
         // Lösche Token aus der Datenbank
         await SelectLineToken.deleteMany({});
-        this.logger.info('Successfully logged out from SelectLine API and removed token');
+        this.logger.info('LOGOUT: Successfully logged out from SelectLine API and removed token. TOKEN: ' + token);
         return {token:token, message:'Erfolgreich von SelectLine abgemeldet'};
       }
       
@@ -134,10 +133,10 @@ class SelectLineAuthService {
       if (error.response.status === 403) {
         // Lösche Token aus der Datenbank
         await SelectLineToken.deleteMany({});
-        this.logger.info('Successfully logged out from SelectLine API and removed token');
+        this.logger.info('LOGOUT: 403 ' + error.message);
         return true;
       }else{
-        this.logger.error('Fehler beim Logout von SelectLine API', { 
+        this.logger.error('LOGOUT:Fehler beim Logout von SelectLine API', { 
           error: error.message,
           stack: error.stack,
           apiError: error.response?.data,        // API Fehlermeldung
